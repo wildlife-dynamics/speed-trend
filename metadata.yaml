@@ -1,0 +1,18 @@
+name: Speedmap with GAMM Trends
+
+author:
+  - name: ""
+    organization: ""
+    email: ""
+
+description: >-
+  Visualize precomputed wildlife trajectory segments as a speed-classified map
+  and fit a GAMM trend model to yearly mean walking speed.
+
+theory: ""
+
+output_comment: >-
+  Produces an interactive speed map and a GAMM trend chart of mean speed (km/h)
+  over time from subject track geoparquet input.
+
+citation: []

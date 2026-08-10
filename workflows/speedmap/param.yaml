@@ -1,0 +1,30 @@
+workflow_details:
+  name: Speedmap with GAMM Trends
+  description: >-
+    Speed-classified elephant movement map and GAMM trend analysis of mean
+    walking speed over time.
+
+tracks_file:
+  var: "/Users/rodeo/Downloads/subject_tracks_8df0511.parquet"
+
+groupers:
+  groupers: []
+
+time_range:
+  since: "2008-01-01T00:00:00Z"
+  until: "2009-12-31T23:59:59Z"
+
+base_map_defs:
+  base_maps:
+    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+      opacity: 1.0
+    - custom_url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      custom_opacity: 0.5
+      custom_max_zoom: 17
+      custom_min_zoom: null
+
+map_widget_title:
+  title: Subject Speed Map
+
+chart_widget_title:
+  title: Mean Speed Trend Chart

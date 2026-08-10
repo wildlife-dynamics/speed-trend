@@ -1,0 +1,408 @@
+id: speedmap
+
+requirements:
+  - name: ecoscope-workflows-core
+    version: ">=0.22.17, <0.23.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-ecoscope
+    version: ">=0.22.17, <0.23.0"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-custom
+    version: "0.0.41.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-speedmap-trend
+    version: "0.0.1"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+rjsf-overrides:
+  $defs:
+    ValueGrouper.properties.index_name.oneOf:
+      - const: subject_name
+        title: Subject Name
+      - const: subject_subtype
+        title: Subject Subtype
+      - const: subject_sex
+        title: Subject Sex
+
+  properties:
+    tracks_file.properties.var.title: Subject Tracks File
+    tracks_file.properties.var.description: >-
+      Path to a geoparquet file of precomputed subject trajectory segments.
+    tracks_file.properties.var.default: ""
+
+    time_range.properties.since.default: "2008-01-01T00:00:00.000Z"
+    time_range.properties.since.description: Start of the movement analysis period.
+    time_range.properties.until.description: End of the movement analysis period.
+
+    Dashboard.properties.map_widget_title.properties.title.title: Map Title
+    Dashboard.properties.map_widget_title.properties.title.default: Subject Speed Map
+    Dashboard.properties.map_widget_title.properties.title.description: >-
+      Title displayed on the speed map.
+
+    Dashboard.properties.chart_widget_title.properties.title.title: Trend Chart Title
+    Dashboard.properties.chart_widget_title.properties.title.default: Mean Speed Trend Chart
+    Dashboard.properties.chart_widget_title.properties.title.description: >-
+      Title displayed on the GAMM speed trend chart.
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  - name: Set Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Time Range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+
+  - name: Set Groupers
+    id: groupers
+    task: set_groupers
+
+  - title: Subject Tracks
+    type: task-group
+    description: Load precomputed trajectory segments from a local geoparquet file.
+    tasks:
+      - name: ""
+        id: tracks_file
+        task: set_string_var
+
+      - name: ""
+        id: load_subject_tracks
+        task: load_df
+        partial:
+          file_path: ${{ workflow.tracks_file.return }}
+          deserialize_json: false
+
+  - name: ""
+    id: rename_traj_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.load_subject_tracks.return }}
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        subject__name: subject_name
+        subject__subject_subtype: subject_subtype
+        subject__sex: subject_sex
+      raise_if_not_found: false
+
+  - name: ""
+    id: traj_add_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.rename_traj_columns.return }}
+      time_col: segment_start
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true
+      format: mixed
+
+  - name: ""
+    id: classify_traj_speed
+    task: apply_classification
+    partial:
+      df: ${{ workflow.traj_add_temporal_index.return }}
+      input_column_name: speed_kmhr
+      output_column_name: speed_bins
+      classification_options:
+        scheme: equal_interval
+        k: 6
+        label_options:
+          label_ranges: false
+          label_decimals: 1
+
+  - name: ""
+    id: split_subject_traj_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.classify_traj_speed.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  - name: Base Maps
+    id: base_map_defs
+    task: set_base_maps
+
+  - name: ""
+    id: sort_traj_speed
+    task: sort_values
+    partial:
+      column_name: speed_bins
+      ascending: true
+      na_position: last
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: ""
+    id: colormap_traj_speed
+    task: apply_color_map
+    partial:
+      input_column_name: speed_bins
+      output_column_name: speed_bins_colormap
+      colormap:
+        - "#1a9850"
+        - "#91cf60"
+        - "#d9ef8b"
+        - "#fee08b"
+        - "#fc8d59"
+        - "#d73027"
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.sort_traj_speed.return }}
+
+  - name: ""
+    id: speedmap_legend_with_unit
+    task: map_values_with_unit
+    partial:
+      input_column_name: speed_bins
+      output_column_name: speed_bins_formatted
+      original_unit: km/h
+      new_unit: km/h
+      decimal_places: 1
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.colormap_traj_speed.return }}
+
+  - name: ""
+    id: traj_map_layers
+    task: create_polyline_layer
+    partial:
+      layer_style:
+        color_column: speed_bins_colormap
+      legend:
+        label_column: speed_bins_formatted
+        color_column: speed_bins_colormap
+      tooltip_columns:
+        - subject_name
+        - subject_subtype
+        - speed_kmhr
+    mapvalues:
+      argnames: geodataframe
+      argvalues: ${{ workflow.speedmap_legend_with_unit.return }}
+
+  - name: ""
+    id: traj_ecomap
+    task: draw_ecomap
+    partial:
+      tile_layers: ${{ workflow.base_map_defs.return }}
+      north_arrow_style:
+        placement: top-left
+      legend_style:
+        placement: bottom-right
+      static: false
+      title: null
+      max_zoom: 20
+    mapvalues:
+      argnames: geo_layers
+      argvalues: ${{ workflow.traj_map_layers.return }}
+
+  - name: ""
+    id: ecomap_html_urls
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.traj_ecomap.return }}
+
+  - name: ""
+    id: traj_add_month_index
+    task: add_temporal_index
+    partial:
+      time_col: segment_start
+      groupers:
+        - temporal_index: "%Y-%m"
+      cast_to_datetime: true
+      format: mixed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: ""
+    id: speed_trends
+    task: summarize_df
+    partial:
+      summary_params:
+        - display_name: mean_speed_kmhr
+          aggregator: mean
+          column: speed_kmhr
+        - display_name: period_start
+          aggregator: min
+          column: segment_start
+          decimal_places: null
+      groupby_cols:
+        - TemporalGrouper_%Y-%m
+      reset_index: true
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.traj_add_month_index.return }}
+
+  - name: ""
+    id: persist_speed_trend_data
+    task: persist_df_wrapper
+    skipif:
+      conditions:
+        - never
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      sanitize: true
+      filename_prefix: speed_trends
+      filetypes:
+        - parquet
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.speed_trends.return }}
+
+  - title: Trend Analysis
+    type: task-group
+    description: Configure the GAM trend fitting parameters for mean speed over time.
+    tasks:
+      - name: ""
+        id: gamm_model
+        task: fit_gamm_model
+        partial:
+          time_column: period_start
+          value_column: mean_speed_kmhr
+          alpha: null
+          lower_bound: null
+          upper_bound: null
+          optimize_alpha: true
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.speed_trends.return }}
+
+      - name: ""
+        id: trend_predictions
+        task: predict_gamm_trends
+        partial:
+          time_values: null
+          include_ci: true
+        mapvalues:
+          argnames: model_params
+          argvalues: ${{ workflow.gamm_model.return }}
+
+      - name: ""
+        id: persist_trend_data
+        task: persist_df_wrapper
+        skipif:
+          conditions:
+            - never
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          sanitize: true
+          filename_prefix: trend_predictions
+          filetypes:
+            - parquet
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.trend_predictions.return }}
+
+      - name: Trend Chart
+        id: speed_trend_chart
+        task: draw_historic_timeseries
+        partial:
+          current_value_column: y
+          time_column: time
+          current_value_title: Observed Mean Speed
+          historic_min_column: ci_lower
+          historic_max_column: ci_upper
+          historic_mean_column: predicted
+          historic_mean_title: Trend Estimate
+          historic_band_title: Trend Confidence
+          layout_style:
+            xaxis:
+              title: Time
+            yaxis:
+              title: Mean Speed (km/h)
+          upper_lower_band_style:
+            mode: lines
+            line:
+              color: green
+          historic_mean_style: null
+          current_value_style: null
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.trend_predictions.return }}
+
+      - name: ""
+        id: persist_speed_trend_chart
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.speed_trend_chart.return }}
+
+  - title: Dashboard
+    type: task-group
+    description: Configure the dashboard output titles.
+    tasks:
+      - name: ""
+        id: map_widget_title
+        task: set_title_var
+
+      - name: ""
+        id: chart_widget_title
+        task: set_title_var
+
+  - name: ""
+    id: speed_map_widget
+    task: create_map_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: ${{ workflow.map_widget_title.return }}
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.ecomap_html_urls.return }}
+
+  - name: ""
+    id: grouped_speed_map
+    task: merge_widget_views
+    skipif:
+      conditions:
+        - never
+    partial:
+      widgets: ${{ workflow.speed_map_widget.return }}
+
+  - name: ""
+    id: speed_trend_widget
+    task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: ${{ workflow.chart_widget_title.return }}
+    map:
+      argnames: [view, data]
+      argvalues: ${{ workflow.persist_speed_trend_chart.return }}
+
+  - name: ""
+    id: grouped_speed_trend
+    task: merge_widget_views
+    skipif:
+      conditions:
+        - never
+    partial:
+      widgets: ${{ workflow.speed_trend_widget.return }}
+
+  - name: ""
+    id: speedmap_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return }}
+      time_range: ${{ workflow.time_range.return }}
+      widgets:
+        - ${{ workflow.grouped_speed_map.return }}
+        - ${{ workflow.grouped_speed_trend.return }}
+      groupers: ${{ workflow.groupers.return }}
