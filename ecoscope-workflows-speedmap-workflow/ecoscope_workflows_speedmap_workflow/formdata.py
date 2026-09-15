@@ -18,22 +18,19 @@ class WorkflowDetails(BaseModel):
     description: str | None = Field("", title="Workflow Description")
 
 
-class TracksFile(BaseModel):
+class SubjectObs(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    var: str = Field(..., title="")
+    subject_group_name: str = Field(
+        ...,
+        description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
+        title="Subject Group Name",
+    )
 
 
-class LoadSubjectTracks(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    layer: str | None = Field(
-        None,
-        description="Layer name for GeoPackage files (optional, only used for .gpkg files)",
-        title="Layer",
-    )
+class SubjectGroup(BaseModel):
+    subject_obs: SubjectObs | None = Field(None, title="")
 
 
 class Url(str, Enum):
@@ -155,12 +152,12 @@ class BaseMaps6(BaseModel):
         title="Custom Layer Opacity",
     )
     max_zoom: int | None = Field(
-        None,
+        20,
         description="Set the maximum zoom level to fetch tiles for.",
         title="Custom Layer Max Zoom",
     )
     min_zoom: int | None = Field(
-        None,
+        0,
         description="Set the minimum zoom level to fetch tiles for.",
         title="Custom Layer Min Zoom",
     )
@@ -175,10 +172,12 @@ class BaseMapDefs(BaseModel):
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 1,
+                "max_zoom": 20,
             },
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 0.5,
+                "max_zoom": 20,
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
@@ -204,32 +203,61 @@ class GammModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    alpha: float | None = Field(
+        1.0,
+        description="Fixed smoothing parameter, used only when Optimize Alpha is off.",
+        title="Alpha",
+    )
+    optimize_alpha: bool | None = Field(
+        False,
+        description='Automatically search for the best smoothing parameter. The automatic search can fail ("Perfect separation detected") on groups with very few monthly data points, so this defaults to off with a fixed Alpha value instead; turn it on for a data-driven fit on larger groups.',
+        title="Optimize Alpha",
+    )
     metric: Metric | None = Field(
         "AIC", description="Metric for optimization", title="Metric"
     )
     degree_of_freedom: int | None = Field(
-        10, description="Degrees of freedom for spline basis", title="Degree Of Freedom"
+        3,
+        description="Degrees of freedom for the trend spline. Lower this if the fit fails (e.g. for a group with few monthly data points); raise it for a smoother fit on longer time series with more data points. Must be greater than Degree.",
+        title="Degree Of Freedom",
     )
     degree: int | None = Field(
-        3, description="Degree of B-spline basis", title="Degree"
+        2,
+        description="Degree of the trend spline (2 = quadratic). Lower values fit more reliably on groups with few monthly data points; degree must be at least 2 for the smoothing penalty to be computed.",
+        title="Degree",
     )
     family: Family | None = Field(
         "Gaussian", description="Distribution family for GLM", title="Family"
     )
 
 
+class TrendAnalysis(BaseModel):
+    gamm_model: GammModel | None = Field(None, title="")
+
+
 class MapWidgetTitle(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    title: str = Field(..., title="")
+    title: str = Field(
+        ..., description="Title displayed on the speed map.", title="Map Title"
+    )
 
 
 class ChartWidgetTitle(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    title: str = Field(..., title="")
+    title: str = Field(
+        ...,
+        description="Title displayed on the GAMM speed trend chart.",
+        title="Trend Chart Title",
+    )
+
+
+class Dashboard(BaseModel):
+    map_widget_title: MapWidgetTitle | None = Field(None, title="")
+    chart_widget_title: ChartWidgetTitle | None = Field(None, title="")
 
 
 class TimezoneInfo(BaseModel):
@@ -237,6 +265,10 @@ class TimezoneInfo(BaseModel):
     tzCode: str = Field(..., title="Tzcode")
     name: str = Field(..., title="Name")
     utc: str = Field(..., title="Utc")
+
+
+class EarthRangerConnection(BaseModel):
+    name: str = Field(..., title="Data Source")
 
 
 class SpatialGrouper(BaseModel):
@@ -251,6 +283,27 @@ class ValueGrouper(BaseModel):
     index_name: str = Field(..., title="Category")
 
 
+class TrajectorySegmentFilter(BaseModel):
+    min_length_meters: confloat(ge=0.001) | None = Field(
+        0.001, title="Minimum Segment Length (Meters)"
+    )
+    max_length_meters: confloat(gt=0.001) | None = Field(
+        100000, title="Maximum Segment Length (Meters)"
+    )
+    min_time_secs: confloat(ge=1.0) | None = Field(
+        1, title="Minimum Segment Duration (Seconds)"
+    )
+    max_time_secs: confloat(gt=1.0) | None = Field(
+        172800, title="Maximum Segment Duration (Seconds)"
+    )
+    min_speed_kmhr: confloat(gt=0.001) | None = Field(
+        0.01, title="Minimum Segment Speed (Kilometers per Hour)"
+    )
+    max_speed_kmhr: confloat(gt=0.001) | None = Field(
+        500, title="Maximum Segment Speed (Kilometers per Hour)"
+    )
+
+
 class CustomLabels(BaseModel):
     label_prefix: str | None = Field("", title="Label Prefix")
     label_suffix: str | None = Field("", title="Label Suffix")
@@ -259,30 +312,73 @@ class CustomLabels(BaseModel):
 
 class DefaultLabels(BaseModel):
     label_prefix: str | None = Field("", title="Label Prefix")
-    label_suffix: str | None = Field("", title="Label Suffix")
-    label_ranges: bool | None = Field(False, title="Label Ranges")
+    label_suffix: str | None = Field(" km/h", title="Label Suffix")
+    label_ranges: bool | None = Field(True, title="Label Ranges")
     label_decimals: int | None = Field(1, title="Label Decimals")
+
+
+class ViewState(BaseModel):
+    longitude: confloat(ge=-180.0, le=180.0) | None = Field(0, title="Longitude")
+    latitude: confloat(ge=-90.0, le=90.0) | None = Field(0, title="Latitude")
+    zoom: confloat(ge=0.0, le=20.0) | None = Field(0, title="Zoom")
+    pitch: confloat(ge=0.0, le=60.0) | None = Field(0, title="Pitch")
+    bearing: confloat(le=360.0) | None = Field(0, title="Bearing")
 
 
 class TimeRange(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    since: datetime = Field(..., description="The start time", title="Since")
-    until: datetime = Field(..., description="The end time", title="Until")
+    since: datetime = Field(
+        ..., description="Start of the movement analysis period.", title="Since"
+    )
+    until: datetime = Field(
+        ..., description="End of the movement analysis period.", title="Until"
+    )
     timezone: TimezoneInfo | None = Field(None, title="Timezone")
+
+
+class ErClientName(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    data_source: EarthRangerConnection = Field(
+        ..., description="Select one of your configured data sources.", title=""
+    )
 
 
 class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    groupers: list[ValueGrouper | TemporalGrouper | SpatialGrouper] | None = (
-        Field(
-            None,
-            description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
-            title=" ",
-        )
+    groupers: list[TemporalGrouper | ValueGrouper] | None = Field(
+        None,
+        description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
+        title=" ",
+    )
+
+
+class GroupData(BaseModel):
+    groupers: Groupers | None = Field(None, title="")
+
+
+class SubjectTraj(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    trajectory_segment_filter: TrajectorySegmentFilter | None = Field(
+        default_factory=lambda: TrajectorySegmentFilter.model_validate(
+            {
+                "min_length_meters": 0.001,
+                "max_length_meters": 100000,
+                "min_time_secs": 1,
+                "max_time_secs": 172800,
+                "min_speed_kmhr": 0.01,
+                "max_speed_kmhr": 500,
+            }
+        ),
+        description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
+        title=" ",
     )
 
 
@@ -297,7 +393,20 @@ class ClassifyTrajSpeed(BaseModel):
     )
 
 
-class Params(BaseModel):
+class TrajEcomap(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    view_state: ViewState | None = Field(
+        default_factory=lambda: ViewState.model_validate(
+            {"longitude": 0, "latitude": 0, "zoom": 0, "pitch": 0, "bearing": 0}
+        ),
+        description="Manually set the view state of the map.",
+        title="View State",
+    )
+
+
+class FormData(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -309,11 +418,28 @@ class Params(BaseModel):
     time_range: TimeRange | None = Field(
         None, description="Choose the period of time to analyze.", title="Time Range"
     )
-    groupers: Groupers | None = Field(None, title="Set Groupers")
-    tracks_file: TracksFile | None = Field(None, title="")
-    load_subject_tracks: LoadSubjectTracks | None = Field(None, title="")
+    er_client_name: ErClientName | None = Field(None, title="Data Source")
+    Subject_Group: SubjectGroup | None = Field(
+        None,
+        alias="Subject Group",
+        description="Choose the EarthRanger subject group to map and analyze.",
+    )
+    Group_Data: GroupData | None = Field(
+        None,
+        alias="Group Data",
+        description="Optionally group the data by subject, time period, or spatial feature group.",
+    )
+    subject_traj: SubjectTraj | None = Field(
+        None, title="Convert Relocations to Trajectory"
+    )
     classify_traj_speed: ClassifyTrajSpeed | None = Field(None, title="")
     base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
-    gamm_model: GammModel | None = Field(None, title="")
-    map_widget_title: MapWidgetTitle | None = Field(None, title="")
-    chart_widget_title: ChartWidgetTitle | None = Field(None, title="")
+    traj_ecomap: TrajEcomap | None = Field(None, title="")
+    Trend_Analysis: TrendAnalysis | None = Field(
+        None,
+        alias="Trend Analysis",
+        description="Configure the GAM trend fitting parameters for mean speed over time.",
+    )
+    Dashboard_1: Dashboard | None = Field(
+        None, alias="Dashboard", description="Configure the dashboard output titles."
+    )

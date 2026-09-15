@@ -31,7 +31,7 @@ channel = "https://repo.prefix.dev/ecoscope-workflows/"
 version = "0.0.41.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
-[dependencies.ecoscope-workflows-ext-speedmap-trend]
+[dependencies.ecoscope-workflows-ext-gamm-trend-analysis]
 version = "==0.0.1"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
@@ -129,5 +129,5 @@ solve-group = "test"
 no-default-feature = true
 
 [tasks]
-docker-build = "mkdir -p .tmp/ecoscope-workflows/release/artifacts/\n&& cp -r /tmp/ecoscope-workflows/release/artifacts/* .tmp/ecoscope-workflows/release/artifacts/\n&& docker buildx build -t ecoscope-workflows-speedmap-workflow .\n"
+docker-build = "docker buildx build -t ecoscope-workflows-speedmap-workflow ."
 ecoscope-workflows-speedmap-workflow = "python -m ecoscope_workflows_speedmap_workflow.cli"

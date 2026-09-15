@@ -3,8 +3,8 @@ name: Recompile Workflows
 on:
   workflow_call:
     inputs:
-      workflows:
-        description: "JSON array of workflow names"
+      workflow_id:
+        description: "The workflow id"
         required: true
         type: string
       download-artifacts:
@@ -15,12 +15,8 @@ on:
 
 jobs:
   recompile-workflows:
-    if: fromJson(inputs.workflows) != '[]'
+    if: inputs.workflow_id != ''
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        workflow: ${{ fromJson(inputs.workflows) }}
-      fail-fast: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,12 +42,12 @@ jobs:
 
       - name: Recompile workflow
         run: |
-          pixi run --manifest-path pixi.toml --locked bash -c "./dev/recompile.sh ${{ matrix.workflow }} --update"
+          pixi run --manifest-path pixi.toml --locked bash -c "./dev/recompile.sh --update"
 
       - name: Check for differences in generated files
         run: |
-          WORKFLOW_DIR_NAME=$(echo "${{ matrix.workflow }}" | tr '_' '-')
-          GENERATED_DIR="workflows/${{ matrix.workflow }}/ecoscope-workflows-${WORKFLOW_DIR_NAME}-workflow"
+          WORKFLOW_DIR_NAME=$(echo "${{ inputs.workflow_id }}" | tr '_' '-')
+          GENERATED_DIR="ecoscope-workflows-${WORKFLOW_DIR_NAME}-workflow"
           EXCLUDE_PATTERNS=":(exclude)${GENERATED_DIR}/pixi.lock :(exclude)${GENERATED_DIR}/README.md :(exclude)${GENERATED_DIR}/VERSION.yaml :(exclude)${GENERATED_DIR}/graph.png"
 
           echo "Checking for differences in ${GENERATED_DIR}"
@@ -69,4 +65,23 @@ jobs:
             exit 1
           else
             echo "No differences found - generated files are up to date!"
+          fi
+
+      - name: Validate excluded files exist
+        run: |
+          WORKFLOW_DIR_NAME=$(echo "${{ inputs.workflow_id }}" | tr '_' '-')
+          GENERATED_DIR="ecoscope-workflows-${WORKFLOW_DIR_NAME}-workflow"
+          errors=0
+
+          for file in pixi.lock VERSION.yaml README.md; do
+            if [ ! -f "${GENERATED_DIR}/${file}" ]; then
+              echo "::error::${GENERATED_DIR}/${file} does not exist!"
+              errors=$((errors + 1))
+            else
+              echo "OK: ${GENERATED_DIR}/${file}"
+            fi
+          done
+
+          if [ $errors -gt 0 ]; then
+            exit 1
           fi

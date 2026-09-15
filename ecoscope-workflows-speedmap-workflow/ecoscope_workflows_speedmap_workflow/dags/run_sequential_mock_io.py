@@ -10,12 +10,36 @@ import json
 import os
 import warnings  # 🧪
 
-from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
 )
+from ecoscope_workflows_core.tasks.filter import (
+    get_timezone_from_time_range as get_timezone_from_time_range,
+)
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
+
+get_subjectgroup_observations = create_task_magicmock(  # 🧪
+    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+    func_name="get_subjectgroup_observations",  # 🧪
+)  # 🧪
 from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.transformation import (
+    convert_values_to_timezone as convert_values_to_timezone,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    extract_spatial_grouper_feature_group_names as extract_spatial_grouper_feature_group_names,
+)
+
+get_spatial_features_group = create_task_magicmock(  # 🧪
+    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+    func_name="get_spatial_features_group",  # 🧪
+)  # 🧪
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
@@ -28,43 +52,53 @@ from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_das
 from ecoscope_workflows_core.tasks.results import (
     merge_widget_views as merge_widget_views,
 )
-from ecoscope_workflows_core.tasks.skip import (
-    any_dependency_skipped as any_dependency_skipped,
-)
-from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
 from ecoscope_workflows_core.tasks.skip import never as never
 from ecoscope_workflows_core.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_core.tasks.transformation import (
-    map_values_with_unit as map_values_with_unit,
-)
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
-from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.io import (
     persist_df_wrapper as persist_df_wrapper,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
-from ecoscope_workflows_ext_ecoscope.tasks.results import (
-    create_polyline_layer as create_polyline_layer,
+from ecoscope_workflows_ext_custom.tasks.results import (
+    create_path_layer as create_path_layer,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap as draw_ecomap
+from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map
+from ecoscope_workflows_ext_custom.tasks.results import (
+    set_base_maps_pydeck as set_base_maps_pydeck,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    process_relocations as process_relocations,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    relocations_to_trajectory as relocations_to_trajectory,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_historic_timeseries as draw_historic_timeseries,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps as set_base_maps
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    add_spatial_index as add_spatial_index,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_classification as apply_classification,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     apply_color_map as apply_color_map,
 )
-from ecoscope_workflows_ext_speedmap_trend.tasks import fit_gamm_model as fit_gamm_model
-from ecoscope_workflows_ext_speedmap_trend.tasks import (
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    resolve_spatial_feature_groups_for_spatial_groupers as resolve_spatial_feature_groups_for_spatial_groupers,
+)
+from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
+    fit_gamm_model as fit_gamm_model,
+)
+from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
     predict_gamm_trends as predict_gamm_trends,
 )
-from ecoscope_workflows_ext_speedmap_trend.tasks import set_title_var as set_title_var
+from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
+    set_title_var as set_title_var,
+)
 
 from ..params import Params
 
@@ -108,6 +142,83 @@ def main(params: Params):
         .call()
     )
 
+    get_timezone = (
+        get_timezone_from_time_range.validate()
+        .set_task_instance_id("get_timezone")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(time_range=time_range, **(params_dict.get("get_timezone") or {}))
+        .call()
+    )
+
+    er_client_name = (
+        set_er_connection.validate()
+        .set_task_instance_id("er_client_name")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(**(params_dict.get("er_client_name") or {}))
+        .call()
+    )
+
+    subject_obs = (
+        get_subjectgroup_observations.validate()
+        .set_task_instance_id("subject_obs")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            client=er_client_name,
+            time_range=time_range,
+            raise_on_empty=False,
+            include_details=False,
+            include_subjectsource_details=False,
+            filter="clean",
+            **(params_dict.get("subject_obs") or {}),
+        )
+        .call()
+    )
+
+    convert_to_user_timezone = (
+        convert_values_to_timezone.validate()
+        .set_task_instance_id("convert_to_user_timezone")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=subject_obs,
+            timezone=get_timezone,
+            columns=["fixtime"],
+            **(params_dict.get("convert_to_user_timezone") or {}),
+        )
+        .call()
+    )
+
     groupers = (
         set_groupers.validate()
         .set_task_instance_id("groupers")
@@ -124,9 +235,9 @@ def main(params: Params):
         .call()
     )
 
-    tracks_file = (
-        set_string_var.validate()
-        .set_task_instance_id("tracks_file")
+    spatial_group_ids = (
+        extract_spatial_grouper_feature_group_names.validate()
+        .set_task_instance_id("spatial_group_ids")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -136,13 +247,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("tracks_file") or {}))
+        .partial(groupers=groupers, **(params_dict.get("spatial_group_ids") or {}))
         .call()
     )
 
-    load_subject_tracks = (
-        load_df.validate()
-        .set_task_instance_id("load_subject_tracks")
+    fetch_spatial_feature_groups = (
+        get_spatial_features_group.validate()
+        .set_task_instance_id("fetch_spatial_feature_groups")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -153,9 +264,120 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            file_path=tracks_file,
-            deserialize_json=False,
-            **(params_dict.get("load_subject_tracks") or {}),
+            client=er_client_name,
+            **(params_dict.get("fetch_spatial_feature_groups") or {}),
+        )
+        .map(argnames=["spatial_features_group_name"], argvalues=spatial_group_ids)
+    )
+
+    resolved_groupers = (
+        resolve_spatial_feature_groups_for_spatial_groupers.validate()
+        .set_task_instance_id("resolved_groupers")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            groupers=groupers,
+            spatial_feature_groups=fetch_spatial_feature_groups,
+            **(params_dict.get("resolved_groupers") or {}),
+        )
+        .call()
+    )
+
+    subject_reloc = (
+        process_relocations.validate()
+        .set_task_instance_id("subject_reloc")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            observations=convert_to_user_timezone,
+            relocs_columns=[
+                "groupby_col",
+                "fixtime",
+                "junk_status",
+                "geometry",
+                "extra__subject__name",
+                "extra__subject__subject_subtype",
+                "extra__subject__sex",
+            ],
+            filter_point_coords=[
+                {"x": 180.0, "y": 90.0},
+                {"x": 0.0, "y": 0.0},
+                {"x": 1.0, "y": 1.0},
+            ],
+            **(params_dict.get("subject_reloc") or {}),
+        )
+        .call()
+    )
+
+    subject_traj = (
+        relocations_to_trajectory.validate()
+        .set_task_instance_id("subject_traj")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(relocations=subject_reloc, **(params_dict.get("subject_traj") or {}))
+        .call()
+    )
+
+    traj_add_temporal_index = (
+        add_temporal_index.validate()
+        .set_task_instance_id("traj_add_temporal_index")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            df=subject_traj,
+            time_col="segment_start",
+            groupers=resolved_groupers,
+            cast_to_datetime=True,
+            format="mixed",
+            **(params_dict.get("traj_add_temporal_index") or {}),
+        )
+        .call()
+    )
+
+    traj_add_spatial_index = (
+        add_spatial_index.validate()
+        .set_task_instance_id("traj_add_spatial_index")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            gdf=traj_add_temporal_index,
+            groupers=resolved_groupers,
+            **(params_dict.get("traj_add_spatial_index") or {}),
         )
         .call()
     )
@@ -173,39 +395,16 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            df=load_subject_tracks,
+            df=traj_add_spatial_index,
             drop_columns=[],
             retain_columns=[],
             rename_columns={
-                "subject__name": "subject_name",
-                "subject__subject_subtype": "subject_subtype",
-                "subject__sex": "subject_sex",
+                "extra__name": "subject_name",
+                "extra__subject_subtype": "subject_subtype",
+                "extra__sex": "subject_sex",
             },
-            raise_if_not_found=False,
+            raise_if_not_found=True,
             **(params_dict.get("rename_traj_columns") or {}),
-        )
-        .call()
-    )
-
-    traj_add_temporal_index = (
-        add_temporal_index.validate()
-        .set_task_instance_id("traj_add_temporal_index")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            df=rename_traj_columns,
-            time_col="segment_start",
-            groupers=groupers,
-            cast_to_datetime=True,
-            format="mixed",
-            **(params_dict.get("traj_add_temporal_index") or {}),
         )
         .call()
     )
@@ -223,14 +422,10 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            df=traj_add_temporal_index,
+            df=rename_traj_columns,
             input_column_name="speed_kmhr",
             output_column_name="speed_bins",
-            classification_options={
-                "scheme": "equal_interval",
-                "k": 6,
-                "label_options": {"label_ranges": False, "label_decimals": 1},
-            },
+            classification_options={"scheme": "equal_interval", "k": 6},
             **(params_dict.get("classify_traj_speed") or {}),
         )
         .call()
@@ -250,14 +445,14 @@ def main(params: Params):
         )
         .partial(
             df=classify_traj_speed,
-            groupers=groupers,
+            groupers=resolved_groupers,
             **(params_dict.get("split_subject_traj_groups") or {}),
         )
         .call()
     )
 
     base_map_defs = (
-        set_base_maps.validate()
+        set_base_maps_pydeck.validate()
         .set_task_instance_id("base_map_defs")
         .handle_errors()
         .with_tracing()
@@ -314,31 +509,8 @@ def main(params: Params):
         .mapvalues(argnames=["df"], argvalues=sort_traj_speed)
     )
 
-    speedmap_legend_with_unit = (
-        map_values_with_unit.validate()
-        .set_task_instance_id("speedmap_legend_with_unit")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            input_column_name="speed_bins",
-            output_column_name="speed_bins_formatted",
-            original_unit="km/h",
-            new_unit="km/h",
-            decimal_places=1,
-            **(params_dict.get("speedmap_legend_with_unit") or {}),
-        )
-        .mapvalues(argnames=["df"], argvalues=colormap_traj_speed)
-    )
-
     traj_map_layers = (
-        create_polyline_layer.validate()
+        create_path_layer.validate()
         .set_task_instance_id("traj_map_layers")
         .handle_errors()
         .with_tracing()
@@ -350,19 +522,19 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            layer_style={"color_column": "speed_bins_colormap"},
+            layer_style={"get_color": "speed_bins_colormap"},
             legend={
-                "label_column": "speed_bins_formatted",
+                "title": "Speed",
+                "label_column": "speed_bins",
                 "color_column": "speed_bins_colormap",
             },
-            tooltip_columns=["subject_name", "subject_subtype", "speed_kmhr"],
             **(params_dict.get("traj_map_layers") or {}),
         )
-        .mapvalues(argnames=["geodataframe"], argvalues=speedmap_legend_with_unit)
+        .mapvalues(argnames=["geodataframe"], argvalues=colormap_traj_speed)
     )
 
     traj_ecomap = (
-        draw_ecomap.validate()
+        draw_map.validate()
         .set_task_instance_id("traj_ecomap")
         .handle_errors()
         .with_tracing()
@@ -375,7 +547,6 @@ def main(params: Params):
         )
         .partial(
             tile_layers=base_map_defs,
-            north_arrow_style={"placement": "top-left"},
             legend_style={"placement": "bottom-right"},
             static=False,
             title=None,
@@ -495,10 +666,8 @@ def main(params: Params):
         .partial(
             time_column="period_start",
             value_column="mean_speed_kmhr",
-            alpha=None,
             lower_bound=None,
             upper_bound=None,
-            optimize_alpha=True,
             **(params_dict.get("gamm_model") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
@@ -524,6 +693,28 @@ def main(params: Params):
         .mapvalues(argnames=["model_params"], argvalues=gamm_model)
     )
 
+    trend_time_cast = (
+        add_temporal_index.validate()
+        .set_task_instance_id("trend_time_cast")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            groupers={},
+            time_col="time",
+            cast_to_datetime=True,
+            format="mixed",
+            **(params_dict.get("trend_time_cast") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=trend_predictions)
+    )
+
     persist_trend_data = (
         persist_df_wrapper.validate()
         .set_task_instance_id("persist_trend_data")
@@ -542,7 +733,7 @@ def main(params: Params):
             filetypes=["parquet"],
             **(params_dict.get("persist_trend_data") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=trend_predictions)
+        .mapvalues(argnames=["df"], argvalues=trend_time_cast)
     )
 
     speed_trend_chart = (
@@ -575,7 +766,7 @@ def main(params: Params):
             current_value_style=None,
             **(params_dict.get("speed_trend_chart") or {}),
         )
-        .mapvalues(argnames=["dataframe"], argvalues=trend_predictions)
+        .mapvalues(argnames=["dataframe"], argvalues=trend_time_cast)
     )
 
     persist_speed_trend_chart = (
@@ -711,7 +902,7 @@ def main(params: Params):
             details=workflow_details,
             time_range=time_range,
             widgets=[grouped_speed_map, grouped_speed_trend],
-            groupers=groupers,
+            groupers=resolved_groupers,
             **(params_dict.get("speedmap_dashboard") or {}),
         )
         .call()

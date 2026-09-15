@@ -13,7 +13,7 @@ requirements:
     version: "0.0.41.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
-  - name: ecoscope-workflows-ext-speedmap-trend
+  - name: ecoscope-workflows-ext-gamm-trend-analysis
     version: "0.0.1"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
@@ -27,15 +27,52 @@ rjsf-overrides:
       - const: subject_sex
         title: Subject Sex
 
+    DefaultLabels.properties.label_ranges.default: true
+    DefaultLabels.properties.label_decimals.default: 1
+    DefaultLabels.properties.label_suffix.default: " km/h"
+
   properties:
-    tracks_file.properties.var.title: Subject Tracks File
-    tracks_file.properties.var.description: >-
-      Path to a geoparquet file of precomputed subject trajectory segments.
-    tracks_file.properties.var.default: ""
+    Subject Group.properties.subject_obs.properties.subject_group_name.ecoscope:transform:
+      - transformer: EarthRangerEnumResolver
+        transformer_kws:
+          type: subject_group_name
+          depends_on: properties.er_client_name.properties.data_source.properties.name
+
+    Group Data.properties.groupers.properties.groupers.ecoscope:transform:
+      - transformer: EarthRangerEnumResolver
+        transformer_kws:
+          type: spatial_feature_group
+          depends_on: properties.er_client_name.properties.data_source.properties.name
+    Group Data.properties.groupers.properties.groupers.items.anyOf:
+      - $ref: "#/$defs/TemporalGrouper"
+      - $ref: "#/$defs/ValueGrouper"
 
     time_range.properties.since.default: "2008-01-01T00:00:00.000Z"
     time_range.properties.since.description: Start of the movement analysis period.
     time_range.properties.until.description: End of the movement analysis period.
+
+    Trend Analysis.properties.gamm_model.properties.degree_of_freedom.default: 3
+    Trend Analysis.properties.gamm_model.properties.degree_of_freedom.description: >-
+      Degrees of freedom for the trend spline. Lower this if the fit fails
+      (e.g. for a group with few monthly data points); raise it for a smoother
+      fit on longer time series with more data points. Must be greater than
+      Degree.
+
+    Trend Analysis.properties.gamm_model.properties.degree.default: 2
+    Trend Analysis.properties.gamm_model.properties.degree.description: >-
+      Degree of the trend spline (2 = quadratic). Lower values fit more
+      reliably on groups with few monthly data points; degree must be at
+      least 2 for the smoothing penalty to be computed.
+
+    Trend Analysis.properties.gamm_model.properties.optimize_alpha.default: false
+    Trend Analysis.properties.gamm_model.properties.optimize_alpha.description: >-
+      Automatically search for the best smoothing parameter. The automatic
+      search can fail ("Perfect separation detected") on groups with very
+      few monthly data points, so this defaults to off with a fixed Alpha
+      value instead; turn it on for a data-driven fit on larger groups.
+    Trend Analysis.properties.gamm_model.properties.alpha.default: 1.0
+    Trend Analysis.properties.gamm_model.properties.alpha.description: >-
+      Fixed smoothing parameter, used only when Optimize Alpha is off.
 
     Dashboard.properties.map_widget_title.properties.title.title: Map Title
     Dashboard.properties.map_widget_title.properties.title.default: Subject Speed Map
@@ -64,72 +101,144 @@ workflow:
     partial:
       time_format: "%d %b %Y %H:%M:%S %Z"
 
-  - name: Set Groupers
-    id: groupers
-    task: set_groupers
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
 
-  - title: Subject Tracks
+  - name: Data Source
+    id: er_client_name
+    task: set_er_connection
+
+  - title: Subject Group
     type: task-group
-    description: Load precomputed trajectory segments from a local geoparquet file.
+    description: Choose the EarthRanger subject group to map and analyze.
     tasks:
       - name: ""
-        id: tracks_file
-        task: set_string_var
-
-      - name: ""
-        id: load_subject_tracks
-        task: load_df
+        id: subject_obs
+        task: get_subjectgroup_observations
         partial:
-          file_path: ${{ workflow.tracks_file.return }}
-          deserialize_json: false
+          client: ${{ workflow.er_client_name.return }}
+          time_range: ${{ workflow.time_range.return }}
+          raise_on_empty: false
+          include_details: false
+          include_subjectsource_details: false
+          filter: clean
 
-  - name: ""
-    id: rename_traj_columns
-    task: map_columns
+  - name: Convert to timezone
+    id: convert_to_user_timezone
+    task: convert_values_to_timezone
     partial:
-      df: ${{ workflow.load_subject_tracks.return }}
-      drop_columns: []
-      retain_columns: []
-      rename_columns:
-        subject__name: subject_name
-        subject__subject_subtype: subject_subtype
-        subject__sex: subject_sex
-      raise_if_not_found: false
+      df: ${{ workflow.subject_obs.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns:
+        - fixtime
+
+  - title: Group Data
+    type: task-group
+    description: Optionally group the data by subject, time period, or spatial feature group.
+    tasks:
+      - id: groupers
+        task: set_groupers
+
+      - id: spatial_group_ids
+        task: extract_spatial_grouper_feature_group_names
+        partial:
+          groupers: ${{ workflow.groupers.return }}
+
+      - id: fetch_spatial_feature_groups
+        task: get_spatial_features_group
+        partial:
+          client: ${{ workflow.er_client_name.return }}
+        map:
+          argnames: spatial_features_group_name
+          argvalues: ${{ workflow.spatial_group_ids.return }}
+
+      - id: resolved_groupers
+        task: resolve_spatial_feature_groups_for_spatial_groupers
+        partial:
+          groupers: ${{ workflow.groupers.return }}
+          spatial_feature_groups: ${{ workflow.fetch_spatial_feature_groups.return }}
+
+  - name: Transform Observations to Relocations
+    id: subject_reloc
+    task: process_relocations
+    partial:
+      observations: ${{ workflow.convert_to_user_timezone.return }}
+      relocs_columns:
+        - groupby_col
+        - fixtime
+        - junk_status
+        - geometry
+        - extra__subject__name
+        - extra__subject__subject_subtype
+        - extra__subject__sex
+      filter_point_coords:
+        - x: 180.000000
+          y: 90.000000
+        - x: 0.000000
+          y: 0.000000
+        - x: 1.000000
+          y: 1.000000
+
+  - name: Convert Relocations to Trajectory
+    id: subject_traj
+    task: relocations_to_trajectory
+    partial:
+      relocations: ${{ workflow.subject_reloc.return }}
 
   - name: ""
     id: traj_add_temporal_index
     task: add_temporal_index
     partial:
-      df: ${{ workflow.rename_traj_columns.return }}
+      df: ${{ workflow.subject_traj.return }}
       time_col: segment_start
-      groupers: ${{ workflow.groupers.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
       cast_to_datetime: true
       format: mixed
+
+  - name: ""
+    id: traj_add_spatial_index
+    task: add_spatial_index
+    partial:
+      gdf: ${{ workflow.traj_add_temporal_index.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
+
+  - name: ""
+    id: rename_traj_columns
+    task: map_columns
+    partial:
+      df: ${{ workflow.traj_add_spatial_index.return }}
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        extra__name: subject_name
+        extra__subject_subtype: subject_subtype
+        extra__sex: subject_sex
+      raise_if_not_found: true
 
   - name: ""
     id: classify_traj_speed
     task: apply_classification
     partial:
-      df: ${{ workflow.traj_add_temporal_index.return }}
+      df: ${{ workflow.rename_traj_columns.return }}
       input_column_name: speed_kmhr
       output_column_name: speed_bins
       classification_options:
         scheme: equal_interval
         k: 6
-        label_options:
-          label_ranges: false
-          label_decimals: 1
 
   - name: ""
     id: split_subject_traj_groups
     task: split_groups
     partial:
       df: ${{ workflow.classify_traj_speed.return }}
-      groupers: ${{ workflow.groupers.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}
 
   - name: Base Maps
     id: base_map_defs
-    task: set_base_maps
+    task: set_base_maps_pydeck
 
   - name: ""
     id: sort_traj_speed
@@ -160,42 +269,24 @@ workflow:
       argvalues: ${{ workflow.sort_traj_speed.return }}
 
   - name: ""
-    id: speedmap_legend_with_unit
-    task: map_values_with_unit
+    id: traj_map_layers
+    task: create_path_layer
     partial:
-      input_column_name: speed_bins
-      output_column_name: speed_bins_formatted
-      original_unit: km/h
-      new_unit: km/h
-      decimal_places: 1
+      layer_style:
+        get_color: speed_bins_colormap
+      legend:
+        title: Speed
+        label_column: speed_bins
+        color_column: speed_bins_colormap
     mapvalues:
-      argnames: df
+      argnames: geodataframe
       argvalues: ${{ workflow.colormap_traj_speed.return }}
 
   - name: ""
-    id: traj_map_layers
-    task: create_polyline_layer
-    partial:
-      layer_style:
-        color_column: speed_bins_colormap
-      legend:
-        label_column: speed_bins_formatted
-        color_column: speed_bins_colormap
-      tooltip_columns:
-        - subject_name
-        - subject_subtype
-        - speed_kmhr
-    mapvalues:
-      argnames: geodataframe
-      argvalues: ${{ workflow.speedmap_legend_with_unit.return }}
-
-  - name: ""
     id: traj_ecomap
-    task: draw_ecomap
+    task: draw_map
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
-      north_arrow_style:
-        placement: top-left
       legend_style:
         placement: bottom-right
       static: false
@@ -272,10 +363,8 @@ workflow:
         partial:
           time_column: period_start
           value_column: mean_speed_kmhr
-          alpha: null
           lower_bound: null
           upper_bound: null
-          optimize_alpha: true
         mapvalues:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}
@@ -291,6 +380,18 @@ workflow:
           argvalues: ${{ workflow.gamm_model.return }}
 
       - name: ""
+        id: trend_time_cast
+        task: add_temporal_index
+        partial:
+          groupers: {}
+          time_col: time
+          cast_to_datetime: true
+          format: mixed
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.trend_predictions.return }}
+
+      - name: ""
         id: persist_trend_data
         task: persist_df_wrapper
         skipif:
@@ -304,7 +405,7 @@ workflow:
             - parquet
         mapvalues:
           argnames: df
-          argvalues: ${{ workflow.trend_predictions.return }}
+          argvalues: ${{ workflow.trend_time_cast.return }}
 
       - name: Trend Chart
         id: speed_trend_chart
@@ -331,7 +432,7 @@ workflow:
           current_value_style: null
         mapvalues:
           argnames: dataframe
-          argvalues: ${{ workflow.trend_predictions.return }}
+          argvalues: ${{ workflow.trend_time_cast.return }}
 
       - name: ""
         id: persist_speed_trend_chart
@@ -405,4 +506,4 @@ workflow:
       widgets:
         - ${{ workflow.grouped_speed_map.return }}
         - ${{ workflow.grouped_speed_trend.return }}
-      groupers: ${{ workflow.groupers.return }}
+      groupers: ${{ workflow.resolved_groupers.return }}

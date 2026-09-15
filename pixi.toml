@@ -12,45 +12,21 @@ platforms = ['linux-64', 'osx-64', 'osx-arm64', 'win-64']
 
 [dependencies]
 curl = "*"
-rattler-build = "*"
 yq = "*"
-hatch = "*"
 
 [feature.compile.dependencies]
-# Include this if you add new tasks and the package has been built
 ecoscope-workflows-core = ">=0.22.17, <0.23.0"
 ecoscope-workflows-ext-custom = "0.0.41.*"
 ecoscope-workflows-ext-ecoscope = ">=0.22.17, <0.23.0"
-ecoscope-workflows-ext-speedmap-trend = "*"
-
-
-[feature.compile.pypi-dependencies]
-# Note: you can mark your task libraries editable here.
-# # Remember to comment out duplicate dependencies in [feature.compile.dependencies] above
-# ecoscope-workflows-ext-speedmap-trend = { path = "src/ecoscope-workflows-ext-speedmap-trend", editable = true }
+ecoscope-workflows-ext-gamm-trend-analysis = "0.0.1.*"
 
 [environments]
 compile = { features = [
   "compile",
 ], solve-group = "compile", no-default-feature = true }
 
-[tasks]
-[tasks.build-release]
-cmd = './publish/build.sh'
-
-[tasks.pytest-310]
-cmd = './dev/pytest-task.sh 310'
-
-[tasks.pytest-311]
-cmd = './dev/pytest-task.sh 311'
-
-[tasks.pytest-312]
-cmd = './dev/pytest-task.sh 312'
-
 [feature.compile.tasks.compile-speedmap]
-cmd = './dev/recompile.sh speedmap --install'
-depends-on = ["build-release"]
+cmd = './dev/recompile.sh --install'
 
 [feature.compile.tasks.recompile-speedmap]
-cmd = './dev/recompile.sh speedmap --update'
-depends-on = ["build-release"]
+cmd = './dev/recompile.sh --update'

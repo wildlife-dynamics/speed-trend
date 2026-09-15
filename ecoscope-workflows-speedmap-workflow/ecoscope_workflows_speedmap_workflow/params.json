@@ -53,6 +53,36 @@
       "description": "Choose the period of time to analyze.",
       "title": "Time Range"
     },
+    "er_client_name": {
+      "additionalProperties": false,
+      "properties": {
+        "data_source": {
+          "$ref": "#/$defs/EarthRangerConnection",
+          "title": "",
+          "description": "Select one of your configured data sources."
+        }
+      },
+      "required": [
+        "data_source"
+      ],
+      "type": "object",
+      "title": "Data Source"
+    },
+    "subject_obs": {
+      "additionalProperties": false,
+      "properties": {
+        "subject_group_name": {
+          "title": "Subject Group Name",
+          "type": "string",
+          "description": "\u26a0\ufe0f The use of a group with mixed subtypes could lead to unexpected results"
+        }
+      },
+      "required": [
+        "subject_group_name"
+      ],
+      "type": "object",
+      "title": ""
+    },
     "groupers": {
       "additionalProperties": false,
       "properties": {
@@ -79,36 +109,33 @@
       },
       "type": "object",
       "required": [],
-      "title": "Set Groupers"
-    },
-    "tracks_file": {
-      "additionalProperties": false,
-      "properties": {
-        "var": {
-          "title": "",
-          "type": "string"
-        }
-      },
-      "required": [
-        "var"
-      ],
-      "type": "object",
       "title": ""
     },
-    "load_subject_tracks": {
+    "subject_traj": {
       "additionalProperties": false,
       "properties": {
-        "layer": {
-          "default": null,
-          "title": "Layer",
-          "type": "string",
-          "description": "Layer name for GeoPackage files (optional, only used for .gpkg files)",
+        "trajectory_segment_filter": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TrajectorySegmentFilter"
+            }
+          ],
+          "default": {
+            "min_length_meters": 0.001,
+            "max_length_meters": 100000,
+            "min_time_secs": 1,
+            "max_time_secs": 172800,
+            "min_speed_kmhr": 0.01,
+            "max_speed_kmhr": 500
+          },
+          "title": " ",
+          "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
           "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
-      "title": ""
+      "title": "Convert Relocations to Trajectory"
     },
     "classify_traj_speed": {
       "additionalProperties": false,
@@ -139,17 +166,20 @@
           "default": [
             {
               "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 1
+              "opacity": 1,
+              "max_zoom": 20
             },
             {
               "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 0.5
+              "opacity": 0.5,
+              "max_zoom": 20
             }
           ],
           "items": {
             "title": "Base Layer",
             "anyOf": [
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -163,7 +193,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -174,6 +203,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
@@ -187,7 +217,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -198,6 +227,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -211,7 +241,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -222,6 +251,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
@@ -235,7 +265,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -246,6 +275,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
@@ -259,7 +289,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -270,6 +299,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
@@ -283,7 +313,6 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Layer Opacity",
@@ -294,6 +323,7 @@
                 "type": "object"
               },
               {
+                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
                 "properties": {
                   "url": {
                     "default": "https://example.tiles.com/{z}/{x}/{y}.png",
@@ -305,20 +335,19 @@
                   "opacity": {
                     "default": 1,
                     "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
                     "maximum": 1.0,
                     "minimum": 0.0,
                     "title": "Custom Layer Opacity",
                     "type": "number"
                   },
                   "max_zoom": {
-                    "default": null,
+                    "default": 20,
                     "description": "Set the maximum zoom level to fetch tiles for.",
                     "title": "Custom Layer Max Zoom",
                     "type": "integer"
                   },
                   "min_zoom": {
-                    "default": null,
+                    "default": 0,
                     "description": "Set the minimum zoom level to fetch tiles for.",
                     "title": "Custom Layer Min Zoom",
                     "type": "integer"
@@ -339,9 +368,55 @@
       "required": [],
       "title": "Base Maps"
     },
+    "traj_ecomap": {
+      "additionalProperties": false,
+      "properties": {
+        "view_state": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/ViewState"
+            }
+          ],
+          "default": {
+            "longitude": 0,
+            "latitude": 0,
+            "zoom": 0,
+            "pitch": 0,
+            "bearing": 0
+          },
+          "title": "View State",
+          "description": "Manually set the view state of the map.",
+          "ecoscope:advanced": true
+        }
+      },
+      "type": "object",
+      "required": [],
+      "title": ""
+    },
     "gamm_model": {
       "additionalProperties": false,
       "properties": {
+        "alpha": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alpha",
+          "description": "Smoothing parameter. If None, will be optimized.",
+          "ecoscope:advanced": true
+        },
+        "optimize_alpha": {
+          "default": true,
+          "title": "Optimize Alpha",
+          "type": "boolean",
+          "description": "Whether to optimize alpha parameter",
+          "ecoscope:advanced": true
+        },
         "metric": {
           "default": "AIC",
           "enum": [
@@ -445,6 +520,19 @@
       "title": "TimezoneInfo",
       "type": "object"
     },
+    "EarthRangerConnection": {
+      "properties": {
+        "name": {
+          "title": "Data Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "EarthRangerConnection",
+      "type": "object"
+    },
     "SpatialGrouper": {
       "properties": {
         "spatial_index_name": {
@@ -519,6 +607,54 @@
       "title": "Category",
       "type": "object"
     },
+    "TrajectorySegmentFilter": {
+      "properties": {
+        "min_length_meters": {
+          "default": 0.001,
+          "ecoscope:advanced": true,
+          "minimum": 0.001,
+          "title": "Minimum Segment Length (Meters)",
+          "type": "number"
+        },
+        "max_length_meters": {
+          "default": 100000,
+          "ecoscope:advanced": true,
+          "exclusiveMinimum": 0.001,
+          "title": "Maximum Segment Length (Meters)",
+          "type": "number"
+        },
+        "min_time_secs": {
+          "default": 1,
+          "ecoscope:advanced": true,
+          "minimum": 1,
+          "title": "Minimum Segment Duration (Seconds)",
+          "type": "number"
+        },
+        "max_time_secs": {
+          "default": 172800,
+          "ecoscope:advanced": true,
+          "exclusiveMinimum": 1,
+          "title": "Maximum Segment Duration (Seconds)",
+          "type": "number"
+        },
+        "min_speed_kmhr": {
+          "default": 0.01,
+          "ecoscope:advanced": true,
+          "exclusiveMinimum": 0.001,
+          "title": "Minimum Segment Speed (Kilometers per Hour)",
+          "type": "number"
+        },
+        "max_speed_kmhr": {
+          "default": 500,
+          "ecoscope:advanced": true,
+          "exclusiveMinimum": 0.001,
+          "title": "Maximum Segment Speed (Kilometers per Hour)",
+          "type": "number"
+        }
+      },
+      "title": "TrajectorySegmentFilter",
+      "type": "object"
+    },
     "CustomLabels": {
       "properties": {
         "label_prefix": {
@@ -570,6 +706,52 @@
       },
       "title": "DefaultLabels",
       "type": "object"
+    },
+    "ViewState": {
+      "description": "Represents a deck.gl view state",
+      "properties": {
+        "longitude": {
+          "default": 0,
+          "ecoscope:advanced": true,
+          "maximum": 180.0,
+          "minimum": -180.0,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "latitude": {
+          "default": 0,
+          "ecoscope:advanced": true,
+          "maximum": 90.0,
+          "minimum": -90.0,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "zoom": {
+          "default": 0,
+          "ecoscope:advanced": true,
+          "maximum": 20.0,
+          "minimum": 0.0,
+          "title": "Zoom",
+          "type": "number"
+        },
+        "pitch": {
+          "default": 0,
+          "ecoscope:advanced": true,
+          "maximum": 60.0,
+          "minimum": 0.0,
+          "title": "Pitch",
+          "type": "number"
+        },
+        "bearing": {
+          "default": 0,
+          "ecoscope:advanced": true,
+          "maximum": 360.0,
+          "title": "Bearing",
+          "type": "number"
+        }
+      },
+      "title": "ViewState",
+      "type": "object"
     }
   },
   "uiSchema": {
@@ -588,6 +770,8 @@
     },
     "gamm_model": {
       "ui:order": [
+        "alpha",
+        "optimize_alpha",
         "metric",
         "degree_of_freedom",
         "degree",
@@ -597,11 +781,13 @@
     "ui:order": [
       "workflow_details",
       "time_range",
+      "er_client_name",
+      "subject_obs",
       "groupers",
-      "tracks_file",
-      "load_subject_tracks",
+      "subject_traj",
       "classify_traj_speed",
       "base_map_defs",
+      "traj_ecomap",
       "gamm_model",
       "map_widget_title",
       "chart_widget_title"

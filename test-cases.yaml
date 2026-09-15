@@ -5,8 +5,11 @@ all-grouper:
     workflow_details:
       name: Speedmap with GAMM Trends
       description: Speed map and GAMM mean speed trend for elephant tracks.
-    tracks_file:
-      var: "/Users/rodeo/Downloads/subject_tracks_8df0511.parquet"
+    er_client_name:
+      data_source:
+        name: "EarthRanger"
+    subject_obs:
+      subject_group_name: "Elephants"
     groupers:
       groupers: []
     time_range:
@@ -21,10 +24,19 @@ all-grouper:
       base_maps:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
           opacity: 1.0
-        - custom_url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          custom_opacity: 0.5
-          custom_max_zoom: 17
-          custom_min_zoom: null
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.5
+          max_zoom: 17
+    classify_traj_speed:
+      label_options:
+        label_ranges: true
+        label_decimals: 1
+        label_suffix: " km/h"
+    gamm_model:
+      optimize_alpha: false
+      alpha: 1.0
+      degree: 2
+      degree_of_freedom: 3
     map_widget_title:
       title: Subject Speed Map
     chart_widget_title:
@@ -37,8 +49,11 @@ value-grouper:
     workflow_details:
       name: Speedmap with GAMM Trends
       description: Speed map and GAMM mean speed trend grouped by subject.
-    tracks_file:
-      var: "/Users/rodeo/Downloads/subject_tracks_8df0511.parquet"
+    er_client_name:
+      data_source:
+        name: "EarthRanger"
+    subject_obs:
+      subject_group_name: "Elephants"
     groupers:
       groupers:
         - index_name: subject_name
@@ -51,6 +66,16 @@ value-grouper:
           opacity: 1.0
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           opacity: 0.5
+    classify_traj_speed:
+      label_options:
+        label_ranges: true
+        label_decimals: 1
+        label_suffix: " km/h"
+    gamm_model:
+      optimize_alpha: false
+      alpha: 1.0
+      degree: 2
+      degree_of_freedom: 3
     map_widget_title:
       title: Subject Speed Map
     chart_widget_title:
