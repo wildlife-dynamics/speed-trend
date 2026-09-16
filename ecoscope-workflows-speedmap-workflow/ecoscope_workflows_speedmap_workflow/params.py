@@ -181,6 +181,13 @@ class BaseMapDefs(BaseModel):
     )
 
 
+class TrendBucket(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    var: str = Field(..., title="")
+
+
 class Metric(str, Enum):
     AIC = "AIC"
     BIC = "BIC"
@@ -198,6 +205,14 @@ class Family(str, Enum):
 class GammModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+    )
+    alpha: float | None = Field(
+        None,
+        description="Smoothing parameter. If None, will be optimized.",
+        title="Alpha",
+    )
+    optimize_alpha: bool | None = Field(
+        True, description="Whether to optimize alpha parameter", title="Optimize Alpha"
     )
     metric: Metric | None = Field(
         "AIC", description="Metric for optimization", title="Metric"
@@ -341,6 +356,7 @@ class Params(BaseModel):
         None, title="Convert Relocations to Trajectory"
     )
     base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
+    trend_bucket: TrendBucket | None = Field(None, title="")
     gamm_model: GammModel | None = Field(None, title="")
     map_widget_title: MapWidgetTitle | None = Field(None, title="")
     chart_widget_title: ChartWidgetTitle | None = Field(None, title="")

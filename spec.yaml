@@ -48,18 +48,54 @@ rjsf-overrides:
     time_range.properties.since.description: Start of the movement analysis period.
     time_range.properties.until.description: End of the movement analysis period.
 
+    Trend Analysis.properties.trend_bucket.properties.var.title: Trend Time Bucket
+    Trend Analysis.properties.trend_bucket.properties.var.description: >-
+      Time period to bucket for the mean-speed trend chart. Use a shorter
+      bucket (Day or Week) for subjects tracked over only a short period -
+      Month can be too coarse to produce enough data points for the trend
+      fit in that case.
+    Trend Analysis.properties.trend_bucket.properties.var.default: "%Y-%m"
+    Trend Analysis.properties.trend_bucket.properties.var.oneOf:
+      - const: "%Y-%m-%d"
+        title: Day
+      - const: "%Y-%W"
+        title: Week
+      - const: "%Y-%m"
+        title: Month
+      - const: "%Y"
+        title: Year
+
     Trend Analysis.properties.gamm_model.properties.degree_of_freedom.default: 3
     Trend Analysis.properties.gamm_model.properties.degree_of_freedom.description: >-
       Degrees of freedom for the trend spline. Lower this if the fit fails
-      (e.g. for a group with few monthly data points); raise it for a smoother
-      fit on longer time series with more data points. Must be greater than
-      Degree.
+      (e.g. for a group with few data points at the chosen Trend Time
+      Bucket); raise it for a smoother fit on longer time series with more
+      data points. Must be greater than Degree.
 
     Trend Analysis.properties.gamm_model.properties.degree.default: 2
     Trend Analysis.properties.gamm_model.properties.degree.description: >-
       Degree of the trend spline (2 = quadratic). Lower values fit more
-      reliably on groups with few monthly data points; degree must be at
-      least 2 for the smoothing penalty to be computed.
+      reliably on groups with few data points at the chosen Trend Time
+      Bucket; degree must be at least 2 for the smoothing penalty to be
+      computed.
+
+    Trend Analysis.properties.gamm_model.properties.optimize_alpha.default: false
+    Trend Analysis.properties.gamm_model.properties.optimize_alpha.description: >-
+      Automatically finds the best smoothing parameter, but can fail on
+      groups with few data points at the chosen Trend Time Bucket. Off by
+      default; turn on for a more accurate fit when there's more data.
+    Trend Analysis.properties.gamm_model.properties.alpha.default: 1.0
+    Trend Analysis.properties.gamm_model.properties.alpha.description: >-
+      Controls how smooth the trend curve is. Higher values produce a
+      smoother curve that follows the data less closely; lower values
+      follow the data more closely. Choose Manual to set a fixed value
+      (ignored unless Optimize Alpha is off), or leave as Automatic to let
+      Optimize Alpha search for the best value itself.
+    Trend Analysis.properties.gamm_model.properties.alpha.anyOf:
+      - type: number
+        title: Manual
+      - type: "null"
+        title: Automatic
 
     Dashboard.properties.map_widget_title.properties.title.title: Map Title
     Dashboard.properties.map_widget_title.properties.title.default: Subject Speed Map
@@ -297,58 +333,70 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.traj_ecomap.return }}
 
-  - name: ""
-    id: traj_add_month_index
-    task: add_temporal_index
-    partial:
-      time_col: segment_start
-      groupers:
-        - temporal_index: "%Y-%m"
-      cast_to_datetime: true
-      format: mixed
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.split_subject_traj_groups.return }}
-
-  - name: ""
-    id: speed_trends
-    task: summarize_df
-    partial:
-      summary_params:
-        - display_name: mean_speed_kmhr
-          aggregator: mean
-          column: speed_kmhr
-        - display_name: period_start
-          aggregator: min
-          column: segment_start
-          decimal_places: null
-      groupby_cols:
-        - TemporalGrouper_%Y-%m
-      reset_index: true
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.traj_add_month_index.return }}
-
-  - name: ""
-    id: persist_speed_trend_data
-    task: persist_df_wrapper
-    skipif:
-      conditions:
-        - never
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      sanitize: true
-      filename_prefix: speed_trends
-      filetypes:
-        - parquet
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.speed_trends.return }}
-
   - title: Trend Analysis
     type: task-group
     description: Configure the GAM trend fitting parameters for mean speed over time.
     tasks:
+      - name: ""
+        id: trend_bucket
+        task: set_string_var
+
+      - name: ""
+        id: trend_bucket_column
+        task: concat_string_vars
+        partial:
+          values:
+            - "TemporalGrouper_"
+            - ${{ workflow.trend_bucket.return }}
+
+      - name: ""
+        id: traj_add_month_index
+        task: add_temporal_index
+        partial:
+          time_col: segment_start
+          groupers:
+            - temporal_index: ${{ workflow.trend_bucket.return }}
+          cast_to_datetime: true
+          format: mixed
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+      - name: ""
+        id: speed_trends
+        task: summarize_df
+        partial:
+          summary_params:
+            - display_name: mean_speed_kmhr
+              aggregator: mean
+              column: speed_kmhr
+            - display_name: period_start
+              aggregator: min
+              column: segment_start
+              decimal_places: null
+          groupby_cols:
+            - ${{ workflow.trend_bucket_column.return }}
+          reset_index: true
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.traj_add_month_index.return }}
+
+      - name: ""
+        id: persist_speed_trend_data
+        task: persist_df_wrapper
+        skipif:
+          conditions:
+            - never
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          sanitize: true
+          filename_prefix: speed_trends
+          filetypes:
+            - parquet
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.speed_trends.return }}
+
       - name: ""
         id: gamm_model
         task: fit_gamm_model
@@ -357,8 +405,6 @@ workflow:
           value_column: mean_speed_kmhr
           lower_bound: null
           upper_bound: null
-          optimize_alpha: false
-          alpha: 1.0
         mapvalues:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}

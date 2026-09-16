@@ -26,7 +26,12 @@ base_map_defs:
       opacity: 0.5
       max_zoom: 17
 
+trend_bucket:
+  var: "%Y-%m"
+
 gamm_model:
+  optimize_alpha: false
+  alpha: 1.0
   degree: 2
   degree_of_freedom: 3
 

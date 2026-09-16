@@ -346,9 +346,44 @@
       "required": [],
       "title": "Base Maps"
     },
+    "trend_bucket": {
+      "additionalProperties": false,
+      "properties": {
+        "var": {
+          "title": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "var"
+      ],
+      "type": "object",
+      "title": ""
+    },
     "gamm_model": {
       "additionalProperties": false,
       "properties": {
+        "alpha": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alpha",
+          "description": "Smoothing parameter. If None, will be optimized.",
+          "ecoscope:advanced": true
+        },
+        "optimize_alpha": {
+          "default": true,
+          "title": "Optimize Alpha",
+          "type": "boolean",
+          "description": "Whether to optimize alpha parameter",
+          "ecoscope:advanced": true
+        },
         "metric": {
           "default": "AIC",
           "enum": [
@@ -604,6 +639,8 @@
     },
     "gamm_model": {
       "ui:order": [
+        "alpha",
+        "optimize_alpha",
         "metric",
         "degree_of_freedom",
         "degree",
@@ -618,6 +655,7 @@
       "groupers",
       "subject_traj",
       "base_map_defs",
+      "trend_bucket",
       "gamm_model",
       "map_widget_title",
       "chart_widget_title"

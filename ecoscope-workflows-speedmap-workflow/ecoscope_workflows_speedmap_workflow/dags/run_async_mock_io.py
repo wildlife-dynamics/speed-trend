@@ -41,6 +41,10 @@ get_spatial_features_group = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_spatial_features_group",  # 🧪
 )  # 🧪
+from ecoscope_workflows_core.tasks.config import (
+    concat_string_vars as concat_string_vars,
+)
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
@@ -133,8 +137,10 @@ def main(params: Params):
         "traj_map_layers": ["colormap_traj_speed"],
         "traj_ecomap": ["base_map_defs", "traj_map_layers"],
         "ecomap_html_urls": ["traj_ecomap"],
-        "traj_add_month_index": ["split_subject_traj_groups"],
-        "speed_trends": ["traj_add_month_index"],
+        "trend_bucket": [],
+        "trend_bucket_column": ["trend_bucket"],
+        "traj_add_month_index": ["trend_bucket", "split_subject_traj_groups"],
+        "speed_trends": ["trend_bucket_column", "traj_add_month_index"],
         "persist_speed_trend_data": ["speed_trends"],
         "gamm_model": ["speed_trends"],
         "trend_predictions": ["gamm_model"],
@@ -688,6 +694,44 @@ def main(params: Params):
                 "argvalues": DependsOn("traj_ecomap"),
             },
         ),
+        "trend_bucket": Node(
+            async_task=set_string_var.validate()
+            .set_task_instance_id("trend_bucket")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("trend_bucket") or {}),
+            method="call",
+        ),
+        "trend_bucket_column": Node(
+            async_task=concat_string_vars.validate()
+            .set_task_instance_id("trend_bucket_column")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "values": [
+                    "TemporalGrouper_",
+                    DependsOn("trend_bucket"),
+                ],
+            }
+            | (params_dict.get("trend_bucket_column") or {}),
+            method="call",
+        ),
         "traj_add_month_index": Node(
             async_task=add_temporal_index.validate()
             .set_task_instance_id("traj_add_month_index")
@@ -705,7 +749,7 @@ def main(params: Params):
                 "time_col": "segment_start",
                 "groupers": [
                     {
-                        "temporal_index": "%Y-%m",
+                        "temporal_index": DependsOn("trend_bucket"),
                     },
                 ],
                 "cast_to_datetime": True,
@@ -746,7 +790,7 @@ def main(params: Params):
                     },
                 ],
                 "groupby_cols": [
-                    "TemporalGrouper_%Y-%m",
+                    DependsOn("trend_bucket_column"),
                 ],
                 "reset_index": True,
             }
@@ -802,8 +846,6 @@ def main(params: Params):
                 "value_column": "mean_speed_kmhr",
                 "lower_bound": None,
                 "upper_bound": None,
-                "optimize_alpha": False,
-                "alpha": 1.0,
             }
             | (params_dict.get("gamm_model") or {}),
             method="mapvalues",

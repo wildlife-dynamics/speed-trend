@@ -12,6 +12,10 @@
 import os
 
 from ecoscope_workflows_core.tasks.config import (
+    concat_string_vars as concat_string_vars,
+)
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
+from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
 )
 from ecoscope_workflows_core.tasks.filter import (
@@ -872,6 +876,64 @@ ecomap_html_urls = (
 # %%
 # parameters
 
+trend_bucket_params = dict(
+    var=...,
+)
+
+# %%
+# call the task
+
+
+trend_bucket = (
+    set_string_var.set_task_instance_id("trend_bucket")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**trend_bucket_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ##
+
+# %%
+# parameters
+
+trend_bucket_column_params = dict()
+
+# %%
+# call the task
+
+
+trend_bucket_column = (
+    concat_string_vars.set_task_instance_id("trend_bucket_column")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(values=["TemporalGrouper_", trend_bucket], **trend_bucket_column_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ##
+
+# %%
+# parameters
+
 traj_add_month_index_params = dict()
 
 # %%
@@ -891,7 +953,7 @@ traj_add_month_index = (
     )
     .partial(
         time_col="segment_start",
-        groupers=[{"temporal_index": "%Y-%m"}],
+        groupers=[{"temporal_index": trend_bucket}],
         cast_to_datetime=True,
         format="mixed",
         **traj_add_month_index_params,
@@ -937,7 +999,7 @@ speed_trends = (
                 "decimal_places": None,
             },
         ],
-        groupby_cols=["TemporalGrouper_%Y-%m"],
+        groupby_cols=[trend_bucket_column],
         reset_index=True,
         **speed_trends_params,
     )
@@ -987,6 +1049,8 @@ persist_speed_trend_data = (
 # parameters
 
 gamm_model_params = dict(
+    alpha=...,
+    optimize_alpha=...,
     metric=...,
     degree_of_freedom=...,
     degree=...,
@@ -1013,8 +1077,6 @@ gamm_model = (
         value_column="mean_speed_kmhr",
         lower_bound=None,
         upper_bound=None,
-        optimize_alpha=False,
-        alpha=1.0,
         **gamm_model_params,
     )
     .mapvalues(argnames=["dataframe"], argvalues=speed_trends)

@@ -3,6 +3,10 @@ import json
 import os
 
 from ecoscope_workflows_core.tasks.config import (
+    concat_string_vars as concat_string_vars,
+)
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
+from ecoscope_workflows_core.tasks.config import (
     set_workflow_details as set_workflow_details,
 )
 from ecoscope_workflows_core.tasks.filter import (
@@ -566,6 +570,41 @@ def main(params: Params):
         .mapvalues(argnames=["text"], argvalues=traj_ecomap)
     )
 
+    trend_bucket = (
+        set_string_var.validate()
+        .set_task_instance_id("trend_bucket")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(**(params_dict.get("trend_bucket") or {}))
+        .call()
+    )
+
+    trend_bucket_column = (
+        concat_string_vars.validate()
+        .set_task_instance_id("trend_bucket_column")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            values=["TemporalGrouper_", trend_bucket],
+            **(params_dict.get("trend_bucket_column") or {}),
+        )
+        .call()
+    )
+
     traj_add_month_index = (
         add_temporal_index.validate()
         .set_task_instance_id("traj_add_month_index")
@@ -580,7 +619,7 @@ def main(params: Params):
         )
         .partial(
             time_col="segment_start",
-            groupers=[{"temporal_index": "%Y-%m"}],
+            groupers=[{"temporal_index": trend_bucket}],
             cast_to_datetime=True,
             format="mixed",
             **(params_dict.get("traj_add_month_index") or {}),
@@ -614,7 +653,7 @@ def main(params: Params):
                     "decimal_places": None,
                 },
             ],
-            groupby_cols=["TemporalGrouper_%Y-%m"],
+            groupby_cols=[trend_bucket_column],
             reset_index=True,
             **(params_dict.get("speed_trends") or {}),
         )
@@ -659,8 +698,6 @@ def main(params: Params):
             value_column="mean_speed_kmhr",
             lower_bound=None,
             upper_bound=None,
-            optimize_alpha=False,
-            alpha=1.0,
             **(params_dict.get("gamm_model") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)

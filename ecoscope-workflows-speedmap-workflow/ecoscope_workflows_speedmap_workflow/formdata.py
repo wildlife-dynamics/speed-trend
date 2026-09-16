@@ -185,6 +185,17 @@ class BaseMapDefs(BaseModel):
     )
 
 
+class TrendBucket(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    var: str = Field(
+        ...,
+        description="Time period to bucket for the mean-speed trend chart. Use a shorter bucket (Day or Week) for subjects tracked over only a short period - Month can be too coarse to produce enough data points for the trend fit in that case.",
+        title="Trend Time Bucket",
+    )
+
+
 class Metric(str, Enum):
     AIC = "AIC"
     BIC = "BIC"
@@ -203,17 +214,27 @@ class GammModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
+    alpha: float | None = Field(
+        1.0,
+        description="Controls how smooth the trend curve is. Higher values produce a smoother curve that follows the data less closely; lower values follow the data more closely. Choose Manual to set a fixed value (ignored unless Optimize Alpha is off), or leave as Automatic to let Optimize Alpha search for the best value itself.",
+        title="Alpha",
+    )
+    optimize_alpha: bool | None = Field(
+        False,
+        description="Automatically finds the best smoothing parameter, but can fail on groups with few data points at the chosen Trend Time Bucket. Off by default; turn on for a more accurate fit when there's more data.",
+        title="Optimize Alpha",
+    )
     metric: Metric | None = Field(
         "AIC", description="Metric for optimization", title="Metric"
     )
     degree_of_freedom: int | None = Field(
         3,
-        description="Degrees of freedom for the trend spline. Lower this if the fit fails (e.g. for a group with few monthly data points); raise it for a smoother fit on longer time series with more data points. Must be greater than Degree.",
+        description="Degrees of freedom for the trend spline. Lower this if the fit fails (e.g. for a group with few data points at the chosen Trend Time Bucket); raise it for a smoother fit on longer time series with more data points. Must be greater than Degree.",
         title="Degree Of Freedom",
     )
     degree: int | None = Field(
         2,
-        description="Degree of the trend spline (2 = quadratic). Lower values fit more reliably on groups with few monthly data points; degree must be at least 2 for the smoothing penalty to be computed.",
+        description="Degree of the trend spline (2 = quadratic). Lower values fit more reliably on groups with few data points at the chosen Trend Time Bucket; degree must be at least 2 for the smoothing penalty to be computed.",
         title="Degree",
     )
     family: Family | None = Field(
@@ -222,6 +243,7 @@ class GammModel(BaseModel):
 
 
 class TrendAnalysis(BaseModel):
+    trend_bucket: TrendBucket | None = Field(None, title="")
     gamm_model: GammModel | None = Field(None, title="")
 
 
