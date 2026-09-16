@@ -27,10 +27,6 @@ rjsf-overrides:
       - const: subject_sex
         title: Subject Sex
 
-    DefaultLabels.properties.label_ranges.default: true
-    DefaultLabels.properties.label_decimals.default: 1
-    DefaultLabels.properties.label_suffix.default: " km/h"
-
   properties:
     Subject Group.properties.subject_obs.properties.subject_group_name.ecoscope:transform:
       - transformer: EarthRangerEnumResolver
@@ -44,8 +40,9 @@ rjsf-overrides:
           type: spatial_feature_group
           depends_on: properties.er_client_name.properties.data_source.properties.name
     Group Data.properties.groupers.properties.groupers.items.anyOf:
-      - $ref: "#/$defs/TemporalGrouper"
       - $ref: "#/$defs/ValueGrouper"
+    Group Data.properties.groupers.properties.groupers.default:
+      - index_name: subject_name
 
     time_range.properties.since.default: "2008-01-01T00:00:00.000Z"
     time_range.properties.since.description: Start of the movement analysis period.
@@ -63,16 +60,6 @@ rjsf-overrides:
       Degree of the trend spline (2 = quadratic). Lower values fit more
       reliably on groups with few monthly data points; degree must be at
       least 2 for the smoothing penalty to be computed.
-
-    Trend Analysis.properties.gamm_model.properties.optimize_alpha.default: false
-    Trend Analysis.properties.gamm_model.properties.optimize_alpha.description: >-
-      Automatically search for the best smoothing parameter. The automatic
-      search can fail ("Perfect separation detected") on groups with very
-      few monthly data points, so this defaults to off with a fixed Alpha
-      value instead; turn it on for a data-driven fit on larger groups.
-    Trend Analysis.properties.gamm_model.properties.alpha.default: 1.0
-    Trend Analysis.properties.gamm_model.properties.alpha.description: >-
-      Fixed smoothing parameter, used only when Optimize Alpha is off.
 
     Dashboard.properties.map_widget_title.properties.title.title: Map Title
     Dashboard.properties.map_widget_title.properties.title.default: Subject Speed Map
@@ -228,6 +215,10 @@ workflow:
       classification_options:
         scheme: equal_interval
         k: 6
+      label_options:
+        label_ranges: true
+        label_decimals: 1
+        label_suffix: " km/h"
 
   - name: ""
     id: split_subject_traj_groups
@@ -292,6 +283,7 @@ workflow:
       static: false
       title: null
       max_zoom: 20
+      view_state: null
     mapvalues:
       argnames: geo_layers
       argvalues: ${{ workflow.traj_map_layers.return }}
@@ -365,6 +357,8 @@ workflow:
           value_column: mean_speed_kmhr
           lower_bound: null
           upper_bound: null
+          optimize_alpha: false
+          alpha: 1.0
         mapvalues:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}

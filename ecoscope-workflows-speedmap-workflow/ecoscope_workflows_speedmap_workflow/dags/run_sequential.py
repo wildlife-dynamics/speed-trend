@@ -411,6 +411,11 @@ def main(params: Params):
             input_column_name="speed_kmhr",
             output_column_name="speed_bins",
             classification_options={"scheme": "equal_interval", "k": 6},
+            label_options={
+                "label_ranges": True,
+                "label_decimals": 1,
+                "label_suffix": " km/h",
+            },
             **(params_dict.get("classify_traj_speed") or {}),
         )
         .call()
@@ -536,6 +541,7 @@ def main(params: Params):
             static=False,
             title=None,
             max_zoom=20,
+            view_state=None,
             **(params_dict.get("traj_ecomap") or {}),
         )
         .mapvalues(argnames=["geo_layers"], argvalues=traj_map_layers)
@@ -653,6 +659,8 @@ def main(params: Params):
             value_column="mean_speed_kmhr",
             lower_bound=None,
             upper_bound=None,
+            optimize_alpha=False,
+            alpha=1.0,
             **(params_dict.get("gamm_model") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)

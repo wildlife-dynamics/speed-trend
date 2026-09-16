@@ -503,6 +503,11 @@ def main(params: Params):
                     "scheme": "equal_interval",
                     "k": 6,
                 },
+                "label_options": {
+                    "label_ranges": True,
+                    "label_decimals": 1,
+                    "label_suffix": " km/h",
+                },
             }
             | (params_dict.get("classify_traj_speed") or {}),
             method="call",
@@ -651,6 +656,7 @@ def main(params: Params):
                 "static": False,
                 "title": None,
                 "max_zoom": 20,
+                "view_state": None,
             }
             | (params_dict.get("traj_ecomap") or {}),
             method="mapvalues",
@@ -796,6 +802,8 @@ def main(params: Params):
                 "value_column": "mean_speed_kmhr",
                 "lower_bound": None,
                 "upper_bound": None,
+                "optimize_alpha": False,
+                "alpha": 1.0,
             }
             | (params_dict.get("gamm_model") or {}),
             method="mapvalues",

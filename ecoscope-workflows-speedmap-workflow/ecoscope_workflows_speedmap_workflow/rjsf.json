@@ -109,12 +109,13 @@
           "additionalProperties": false,
           "properties": {
             "groupers": {
-              "default": null,
+              "default": [
+                {
+                  "index_name": "subject_name"
+                }
+              ],
               "items": {
                 "anyOf": [
-                  {
-                    "$ref": "#/$defs/TemporalGrouper"
-                  },
                   {
                     "$ref": "#/$defs/ValueGrouper"
                   }
@@ -166,28 +167,6 @@
       "required": [],
       "type": "object",
       "title": "Convert Relocations to Trajectory"
-    },
-    "classify_traj_speed": {
-      "additionalProperties": false,
-      "properties": {
-        "label_options": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/DefaultLabels"
-            },
-            {
-              "$ref": "#/$defs/CustomLabels"
-            }
-          ],
-          "default": null,
-          "title": "Label Options",
-          "description": "Optional specification or formatting of classification values.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": ""
     },
     "base_map_defs": {
       "additionalProperties": false,
@@ -398,31 +377,6 @@
       "required": [],
       "title": "Base Maps"
     },
-    "traj_ecomap": {
-      "additionalProperties": false,
-      "properties": {
-        "view_state": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/ViewState"
-            }
-          ],
-          "default": {
-            "longitude": 0,
-            "latitude": 0,
-            "zoom": 0,
-            "pitch": 0,
-            "bearing": 0
-          },
-          "title": "View State",
-          "description": "Manually set the view state of the map.",
-          "ecoscope:advanced": true
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": ""
-    },
     "Trend Analysis": {
       "type": "object",
       "description": "Configure the GAM trend fitting parameters for mean speed over time.",
@@ -431,27 +385,6 @@
         "gamm_model": {
           "additionalProperties": false,
           "properties": {
-            "alpha": {
-              "anyOf": [
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": 1.0,
-              "title": "Alpha",
-              "description": "Fixed smoothing parameter, used only when Optimize Alpha is off.",
-              "ecoscope:advanced": true
-            },
-            "optimize_alpha": {
-              "default": false,
-              "title": "Optimize Alpha",
-              "type": "boolean",
-              "description": "Automatically search for the best smoothing parameter. The automatic search can fail (\"Perfect separation detected\") on groups with very few monthly data points, so this defaults to off with a fixed Alpha value instead; turn it on for a data-driven fit on larger groups.",
-              "ecoscope:advanced": true
-            },
             "metric": {
               "default": "AIC",
               "enum": [
@@ -715,104 +648,6 @@
       },
       "title": "TrajectorySegmentFilter",
       "type": "object"
-    },
-    "CustomLabels": {
-      "properties": {
-        "label_prefix": {
-          "default": "",
-          "title": "Label Prefix",
-          "type": "string"
-        },
-        "label_suffix": {
-          "default": "",
-          "title": "Label Suffix",
-          "type": "string"
-        },
-        "labels": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Labels",
-          "type": "array"
-        }
-      },
-      "required": [
-        "labels"
-      ],
-      "title": "CustomLabels",
-      "type": "object"
-    },
-    "DefaultLabels": {
-      "properties": {
-        "label_prefix": {
-          "default": "",
-          "title": "Label Prefix",
-          "type": "string"
-        },
-        "label_suffix": {
-          "default": " km/h",
-          "title": "Label Suffix",
-          "type": "string"
-        },
-        "label_ranges": {
-          "default": true,
-          "title": "Label Ranges",
-          "type": "boolean"
-        },
-        "label_decimals": {
-          "default": 1,
-          "title": "Label Decimals",
-          "type": "integer"
-        }
-      },
-      "title": "DefaultLabels",
-      "type": "object"
-    },
-    "ViewState": {
-      "description": "Represents a deck.gl view state",
-      "properties": {
-        "longitude": {
-          "default": 0,
-          "ecoscope:advanced": true,
-          "maximum": 180.0,
-          "minimum": -180.0,
-          "title": "Longitude",
-          "type": "number"
-        },
-        "latitude": {
-          "default": 0,
-          "ecoscope:advanced": true,
-          "maximum": 90.0,
-          "minimum": -90.0,
-          "title": "Latitude",
-          "type": "number"
-        },
-        "zoom": {
-          "default": 0,
-          "ecoscope:advanced": true,
-          "maximum": 20.0,
-          "minimum": 0.0,
-          "title": "Zoom",
-          "type": "number"
-        },
-        "pitch": {
-          "default": 0,
-          "ecoscope:advanced": true,
-          "maximum": 60.0,
-          "minimum": 0.0,
-          "title": "Pitch",
-          "type": "number"
-        },
-        "bearing": {
-          "default": 0,
-          "ecoscope:advanced": true,
-          "maximum": 360.0,
-          "title": "Bearing",
-          "type": "number"
-        }
-      },
-      "title": "ViewState",
-      "type": "object"
     }
   },
   "uiSchema": {
@@ -832,8 +667,6 @@
     "Trend Analysis": {
       "gamm_model": {
         "ui:order": [
-          "alpha",
-          "optimize_alpha",
           "metric",
           "degree_of_freedom",
           "degree",
@@ -854,9 +687,7 @@
       "Subject Group",
       "Group Data",
       "subject_traj",
-      "classify_traj_speed",
       "base_map_defs",
-      "traj_ecomap",
       "Trend Analysis",
       "Dashboard"
     ]

@@ -203,16 +203,6 @@ class GammModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    alpha: float | None = Field(
-        1.0,
-        description="Fixed smoothing parameter, used only when Optimize Alpha is off.",
-        title="Alpha",
-    )
-    optimize_alpha: bool | None = Field(
-        False,
-        description='Automatically search for the best smoothing parameter. The automatic search can fail ("Perfect separation detected") on groups with very few monthly data points, so this defaults to off with a fixed Alpha value instead; turn it on for a data-driven fit on larger groups.',
-        title="Optimize Alpha",
-    )
     metric: Metric | None = Field(
         "AIC", description="Metric for optimization", title="Metric"
     )
@@ -304,27 +294,6 @@ class TrajectorySegmentFilter(BaseModel):
     )
 
 
-class CustomLabels(BaseModel):
-    label_prefix: str | None = Field("", title="Label Prefix")
-    label_suffix: str | None = Field("", title="Label Suffix")
-    labels: list[str] = Field(..., title="Labels")
-
-
-class DefaultLabels(BaseModel):
-    label_prefix: str | None = Field("", title="Label Prefix")
-    label_suffix: str | None = Field(" km/h", title="Label Suffix")
-    label_ranges: bool | None = Field(True, title="Label Ranges")
-    label_decimals: int | None = Field(1, title="Label Decimals")
-
-
-class ViewState(BaseModel):
-    longitude: confloat(ge=-180.0, le=180.0) | None = Field(0, title="Longitude")
-    latitude: confloat(ge=-90.0, le=90.0) | None = Field(0, title="Latitude")
-    zoom: confloat(ge=0.0, le=20.0) | None = Field(0, title="Zoom")
-    pitch: confloat(ge=0.0, le=60.0) | None = Field(0, title="Pitch")
-    bearing: confloat(le=360.0) | None = Field(0, title="Bearing")
-
-
 class TimeRange(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -351,8 +320,8 @@ class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    groupers: list[TemporalGrouper | ValueGrouper] | None = Field(
-        None,
+    groupers: list[ValueGrouper] | None = Field(
+        [{"index_name": "subject_name"}],
         description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
         title=" ",
     )
@@ -382,30 +351,6 @@ class SubjectTraj(BaseModel):
     )
 
 
-class ClassifyTrajSpeed(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    label_options: DefaultLabels | CustomLabels | None = Field(
-        None,
-        description="Optional specification or formatting of classification values.",
-        title="Label Options",
-    )
-
-
-class TrajEcomap(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    view_state: ViewState | None = Field(
-        default_factory=lambda: ViewState.model_validate(
-            {"longitude": 0, "latitude": 0, "zoom": 0, "pitch": 0, "bearing": 0}
-        ),
-        description="Manually set the view state of the map.",
-        title="View State",
-    )
-
-
 class FormData(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -432,9 +377,7 @@ class FormData(BaseModel):
     subject_traj: SubjectTraj | None = Field(
         None, title="Convert Relocations to Trajectory"
     )
-    classify_traj_speed: ClassifyTrajSpeed | None = Field(None, title="")
     base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
-    traj_ecomap: TrajEcomap | None = Field(None, title="")
     Trend_Analysis: TrendAnalysis | None = Field(
         None,
         alias="Trend Analysis",

@@ -199,14 +199,6 @@ class GammModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    alpha: float | None = Field(
-        None,
-        description="Smoothing parameter. If None, will be optimized.",
-        title="Alpha",
-    )
-    optimize_alpha: bool | None = Field(
-        True, description="Whether to optimize alpha parameter", title="Optimize Alpha"
-    )
     metric: Metric | None = Field(
         "AIC", description="Metric for optimization", title="Metric"
     )
@@ -279,27 +271,6 @@ class TrajectorySegmentFilter(BaseModel):
     )
 
 
-class CustomLabels(BaseModel):
-    label_prefix: str | None = Field("", title="Label Prefix")
-    label_suffix: str | None = Field("", title="Label Suffix")
-    labels: list[str] = Field(..., title="Labels")
-
-
-class DefaultLabels(BaseModel):
-    label_prefix: str | None = Field("", title="Label Prefix")
-    label_suffix: str | None = Field("", title="Label Suffix")
-    label_ranges: bool | None = Field(False, title="Label Ranges")
-    label_decimals: int | None = Field(1, title="Label Decimals")
-
-
-class ViewState(BaseModel):
-    longitude: confloat(ge=-180.0, le=180.0) | None = Field(0, title="Longitude")
-    latitude: confloat(ge=-90.0, le=90.0) | None = Field(0, title="Latitude")
-    zoom: confloat(ge=0.0, le=20.0) | None = Field(0, title="Zoom")
-    pitch: confloat(ge=0.0, le=60.0) | None = Field(0, title="Pitch")
-    bearing: confloat(le=360.0) | None = Field(0, title="Bearing")
-
-
 class TimeRange(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -351,30 +322,6 @@ class SubjectTraj(BaseModel):
     )
 
 
-class ClassifyTrajSpeed(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    label_options: DefaultLabels | CustomLabels | None = Field(
-        None,
-        description="Optional specification or formatting of classification values.",
-        title="Label Options",
-    )
-
-
-class TrajEcomap(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    view_state: ViewState | None = Field(
-        default_factory=lambda: ViewState.model_validate(
-            {"longitude": 0, "latitude": 0, "zoom": 0, "pitch": 0, "bearing": 0}
-        ),
-        description="Manually set the view state of the map.",
-        title="View State",
-    )
-
-
 class Params(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -393,9 +340,7 @@ class Params(BaseModel):
     subject_traj: SubjectTraj | None = Field(
         None, title="Convert Relocations to Trajectory"
     )
-    classify_traj_speed: ClassifyTrajSpeed | None = Field(None, title="")
     base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
-    traj_ecomap: TrajEcomap | None = Field(None, title="")
     gamm_model: GammModel | None = Field(None, title="")
     map_widget_title: MapWidgetTitle | None = Field(None, title="")
     chart_widget_title: ChartWidgetTitle | None = Field(None, title="")

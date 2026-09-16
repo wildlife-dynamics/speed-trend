@@ -598,9 +598,7 @@ rename_traj_columns = (
 # %%
 # parameters
 
-classify_traj_speed_params = dict(
-    label_options=...,
-)
+classify_traj_speed_params = dict()
 
 # %%
 # call the task
@@ -622,6 +620,11 @@ classify_traj_speed = (
         input_column_name="speed_kmhr",
         output_column_name="speed_bins",
         classification_options={"scheme": "equal_interval", "k": 6},
+        label_options={
+            "label_ranges": True,
+            "label_decimals": 1,
+            "label_suffix": " km/h",
+        },
         **classify_traj_speed_params,
     )
     .call()
@@ -799,7 +802,6 @@ traj_map_layers = (
 # parameters
 
 traj_ecomap_params = dict(
-    view_state=...,
     widget_id=...,
 )
 
@@ -824,6 +826,7 @@ traj_ecomap = (
         static=False,
         title=None,
         max_zoom=20,
+        view_state=None,
         **traj_ecomap_params,
     )
     .mapvalues(argnames=["geo_layers"], argvalues=traj_map_layers)
@@ -984,8 +987,6 @@ persist_speed_trend_data = (
 # parameters
 
 gamm_model_params = dict(
-    alpha=...,
-    optimize_alpha=...,
     metric=...,
     degree_of_freedom=...,
     degree=...,
@@ -1012,6 +1013,8 @@ gamm_model = (
         value_column="mean_speed_kmhr",
         lower_bound=None,
         upper_bound=None,
+        optimize_alpha=False,
+        alpha=1.0,
         **gamm_model_params,
     )
     .mapvalues(argnames=["dataframe"], argvalues=speed_trends)

@@ -26,15 +26,7 @@ base_map_defs:
       opacity: 0.5
       max_zoom: 17
 
-classify_traj_speed:
-  label_options:
-    label_ranges: true
-    label_decimals: 1
-    label_suffix: " km/h"
-
 gamm_model:
-  optimize_alpha: false
-  alpha: 1.0
   degree: 2
   degree_of_freedom: 3
 
