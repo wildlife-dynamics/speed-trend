@@ -6,114 +6,116 @@ Lines specific to the testing context are marked with a test tube emoji (🧪) t
 that they would not be included (or would be different) in the production version of this file.
 """
 
-import json
 import os
 import warnings  # 🧪
+from typing import Any
 
-from ecoscope_workflows_core.tasks.config import (
-    set_workflow_details as set_workflow_details,
-)
-from ecoscope_workflows_core.tasks.filter import (
+from ecoscope.platform.tasks.config import set_workflow_details as set_workflow_details
+from ecoscope.platform.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
-from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
-from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
-from ecoscope_workflows_core.tasks.skip import (
+from ecoscope.platform.tasks.filter import set_time_range as set_time_range
+from ecoscope.platform.tasks.io import set_er_connection as set_er_connection
+from ecoscope.platform.tasks.skip import (
     any_dependency_skipped as any_dependency_skipped,
 )
-from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
-from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
+from ecoscope.platform.tasks.skip import any_is_empty_df as any_is_empty_df
+from wt_contracts import validate as _validate
+from wt_task import task
+from wt_task.testing import create_func_magicmock  # 🧪
 
-get_subjectgroup_observations = create_task_magicmock(  # 🧪
-    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+from .. import metadata as _metadata
+
+get_subjectgroup_observations = create_func_magicmock(  # 🧪
+    anchor="ecoscope.platform.tasks.io",  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
-from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
-from ecoscope_workflows_core.tasks.transformation import (
+from ecoscope.platform.tasks.groupby import set_groupers as set_groupers
+from ecoscope.platform.tasks.transformation import (
     convert_values_to_timezone as convert_values_to_timezone,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+from ecoscope.platform.tasks.transformation import (
     extract_spatial_grouper_feature_group_names as extract_spatial_grouper_feature_group_names,
 )
 
-get_spatial_features_group = create_task_magicmock(  # 🧪
-    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+get_spatial_features_group = create_func_magicmock(  # 🧪
+    anchor="ecoscope.platform.tasks.io",  # 🧪
     func_name="get_spatial_features_group",  # 🧪
 )  # 🧪
-from ecoscope_workflows_core.tasks.config import (
-    concat_string_vars as concat_string_vars,
+from ecoscope.platform.tasks.analysis import fit_trend_model as fit_trend_model
+from ecoscope.platform.tasks.analysis import predict_trend_model as predict_trend_model
+from ecoscope.platform.tasks.analysis import set_trend_model as set_trend_model
+from ecoscope.platform.tasks.analysis import summarize_df as summarize_df
+from ecoscope.platform.tasks.analysis._trend_analysis import (
+    is_gamm_trend_model as is_gamm_trend_model,
 )
-from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
-from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
-from ecoscope_workflows_core.tasks.io import persist_text as persist_text
-from ecoscope_workflows_core.tasks.results import (
-    create_map_widget_single_view as create_map_widget_single_view,
+from ecoscope.platform.tasks.analysis._trend_analysis import (
+    is_not_gamm_trend_model as is_not_gamm_trend_model,
 )
-from ecoscope_workflows_core.tasks.results import (
-    create_plot_widget_single_view as create_plot_widget_single_view,
+from ecoscope.platform.tasks.config import concat_string_vars as concat_string_vars
+from ecoscope.platform.tasks.config import set_string_var as set_string_var
+from ecoscope.platform.tasks.groupby import (
+    groupbykey_passthrough_skip as groupbykey_passthrough_skip,
 )
-from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
-from ecoscope_workflows_core.tasks.results import (
-    merge_widget_views as merge_widget_views,
-)
-from ecoscope_workflows_core.tasks.skip import never as never
-from ecoscope_workflows_core.tasks.transformation import (
-    add_temporal_index as add_temporal_index,
-)
-from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
-from ecoscope_workflows_ext_custom.tasks.io import (
-    persist_df_wrapper as persist_df_wrapper,
-)
-from ecoscope_workflows_ext_custom.tasks.results import (
-    create_path_layer as create_path_layer,
-)
-from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map
-from ecoscope_workflows_ext_custom.tasks.results import (
-    set_base_maps_pydeck as set_base_maps_pydeck,
-)
-from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+from ecoscope.platform.tasks.groupby import split_groups as split_groups
+from ecoscope.platform.tasks.io import persist_df_wrapper as persist_df_wrapper
+from ecoscope.platform.tasks.io import persist_text as persist_text
+from ecoscope.platform.tasks.preprocessing import (
     process_relocations as process_relocations,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+from ecoscope.platform.tasks.preprocessing import (
     relocations_to_trajectory as relocations_to_trajectory,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import (
+from ecoscope.platform.tasks.results import (
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope.platform.tasks.results import create_path_layer as create_path_layer
+from ecoscope.platform.tasks.results import (
+    create_plot_widget_single_view as create_plot_widget_single_view,
+)
+from ecoscope.platform.tasks.results import (
     draw_historic_timeseries as draw_historic_timeseries,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+from ecoscope.platform.tasks.results import draw_map as draw_map
+from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
+from ecoscope.platform.tasks.results import set_base_maps as set_base_maps
+from ecoscope.platform.tasks.skip import never as never
+from ecoscope.platform.tasks.transformation import (
     add_spatial_index as add_spatial_index,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+from ecoscope.platform.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
+from ecoscope.platform.tasks.transformation import (
     apply_classification as apply_classification,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    apply_color_map as apply_color_map,
+from ecoscope.platform.tasks.transformation import apply_color_map as apply_color_map
+from ecoscope.platform.tasks.transformation import (
+    concat_dataframes as concat_dataframes,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+from ecoscope.platform.tasks.transformation import map_columns as map_columns
+from ecoscope.platform.tasks.transformation import (
+    rename_value_grouper_columns_to_name as rename_value_grouper_columns_to_name,
+)
+from ecoscope.platform.tasks.transformation import (
     resolve_spatial_feature_groups_for_spatial_groupers as resolve_spatial_feature_groups_for_spatial_groupers,
 )
-from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
-    fit_gamm_model as fit_gamm_model,
-)
-from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
-    predict_gamm_trends as predict_gamm_trends,
-)
-from ecoscope_workflows_ext_gamm_trend_analysis.tasks import (
-    set_title_var as set_title_var,
+from ecoscope.platform.tasks.transformation import sort_values as sort_values
+from ecoscope.platform.tasks.transformation import (
+    trend_groupby_columns as trend_groupby_columns,
 )
 
-from ..params import Params
 
-
-def main(params: Params):
+def main(params: dict[str, Any], validate_params_schema: bool = True):
     warnings.warn("This test script should not be used in production!")  # 🧪
 
-    params_dict = json.loads(params.model_dump_json(exclude_unset=True))
+    if validate_params_schema:
+        _validate(params, _metadata.load_params_schema())
 
     workflow_details = (
-        set_workflow_details.validate()
+        task(set_workflow_details)
+        .validate()
         .set_task_instance_id("workflow_details")
         .handle_errors()
         .with_tracing()
@@ -124,12 +126,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("workflow_details") or {}))
+        .partial(**(params.get("workflow_details") or {}))
         .call()
     )
 
     time_range = (
-        set_time_range.validate()
+        task(set_time_range)
+        .validate()
         .set_task_instance_id("time_range")
         .handle_errors()
         .with_tracing()
@@ -140,14 +143,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            time_format="%d %b %Y %H:%M:%S %Z", **(params_dict.get("time_range") or {})
-        )
+        .partial(time_format="%d %b %Y %H:%M:%S %Z", **(params.get("time_range") or {}))
         .call()
     )
 
     get_timezone = (
-        get_timezone_from_time_range.validate()
+        task(get_timezone_from_time_range)
+        .validate()
         .set_task_instance_id("get_timezone")
         .handle_errors()
         .with_tracing()
@@ -158,12 +160,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(time_range=time_range, **(params_dict.get("get_timezone") or {}))
+        .partial(time_range=time_range, **(params.get("get_timezone") or {}))
         .call()
     )
 
     er_client_name = (
-        set_er_connection.validate()
+        task(set_er_connection)
+        .validate()
         .set_task_instance_id("er_client_name")
         .handle_errors()
         .with_tracing()
@@ -174,12 +177,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("er_client_name") or {}))
+        .partial(**(params.get("er_client_name") or {}))
         .call()
     )
 
     subject_obs = (
-        get_subjectgroup_observations.validate()
+        task(get_subjectgroup_observations)
+        # 🧪 validation omitted for mocked IO task (returns pre-loaded example data)
         .set_task_instance_id("subject_obs")
         .handle_errors()
         .with_tracing()
@@ -197,13 +201,14 @@ def main(params: Params):
             include_details=False,
             include_subjectsource_details=False,
             filter="clean",
-            **(params_dict.get("subject_obs") or {}),
+            **(params.get("subject_obs") or {}),
         )
         .call()
     )
 
     convert_to_user_timezone = (
-        convert_values_to_timezone.validate()
+        task(convert_values_to_timezone)
+        .validate()
         .set_task_instance_id("convert_to_user_timezone")
         .handle_errors()
         .with_tracing()
@@ -218,13 +223,14 @@ def main(params: Params):
             df=subject_obs,
             timezone=get_timezone,
             columns=["fixtime"],
-            **(params_dict.get("convert_to_user_timezone") or {}),
+            **(params.get("convert_to_user_timezone") or {}),
         )
         .call()
     )
 
     groupers = (
-        set_groupers.validate()
+        task(set_groupers)
+        .validate()
         .set_task_instance_id("groupers")
         .handle_errors()
         .with_tracing()
@@ -235,12 +241,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("groupers") or {}))
+        .partial(**(params.get("groupers") or {}))
         .call()
     )
 
     spatial_group_ids = (
-        extract_spatial_grouper_feature_group_names.validate()
+        task(extract_spatial_grouper_feature_group_names)
+        .validate()
         .set_task_instance_id("spatial_group_ids")
         .handle_errors()
         .with_tracing()
@@ -251,12 +258,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(groupers=groupers, **(params_dict.get("spatial_group_ids") or {}))
+        .partial(groupers=groupers, **(params.get("spatial_group_ids") or {}))
         .call()
     )
 
     fetch_spatial_feature_groups = (
-        get_spatial_features_group.validate()
+        task(get_spatial_features_group)
+        # 🧪 validation omitted for mocked IO task (returns pre-loaded example data)
         .set_task_instance_id("fetch_spatial_feature_groups")
         .handle_errors()
         .with_tracing()
@@ -268,14 +276,14 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            client=er_client_name,
-            **(params_dict.get("fetch_spatial_feature_groups") or {}),
+            client=er_client_name, **(params.get("fetch_spatial_feature_groups") or {})
         )
         .map(argnames=["spatial_features_group_name"], argvalues=spatial_group_ids)
     )
 
     resolved_groupers = (
-        resolve_spatial_feature_groups_for_spatial_groupers.validate()
+        task(resolve_spatial_feature_groups_for_spatial_groupers)
+        .validate()
         .set_task_instance_id("resolved_groupers")
         .handle_errors()
         .with_tracing()
@@ -289,13 +297,14 @@ def main(params: Params):
         .partial(
             groupers=groupers,
             spatial_feature_groups=fetch_spatial_feature_groups,
-            **(params_dict.get("resolved_groupers") or {}),
+            **(params.get("resolved_groupers") or {}),
         )
         .call()
     )
 
     subject_reloc = (
-        process_relocations.validate()
+        task(process_relocations)
+        .validate()
         .set_task_instance_id("subject_reloc")
         .handle_errors()
         .with_tracing()
@@ -322,13 +331,14 @@ def main(params: Params):
                 {"x": 0.0, "y": 0.0},
                 {"x": 1.0, "y": 1.0},
             ],
-            **(params_dict.get("subject_reloc") or {}),
+            **(params.get("subject_reloc") or {}),
         )
         .call()
     )
 
     subject_traj = (
-        relocations_to_trajectory.validate()
+        task(relocations_to_trajectory)
+        .validate()
         .set_task_instance_id("subject_traj")
         .handle_errors()
         .with_tracing()
@@ -339,12 +349,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(relocations=subject_reloc, **(params_dict.get("subject_traj") or {}))
+        .partial(relocations=subject_reloc, **(params.get("subject_traj") or {}))
         .call()
     )
 
     traj_add_temporal_index = (
-        add_temporal_index.validate()
+        task(add_temporal_index)
+        .validate()
         .set_task_instance_id("traj_add_temporal_index")
         .handle_errors()
         .with_tracing()
@@ -361,13 +372,14 @@ def main(params: Params):
             groupers=resolved_groupers,
             cast_to_datetime=True,
             format="mixed",
-            **(params_dict.get("traj_add_temporal_index") or {}),
+            **(params.get("traj_add_temporal_index") or {}),
         )
         .call()
     )
 
     traj_add_spatial_index = (
-        add_spatial_index.validate()
+        task(add_spatial_index)
+        .validate()
         .set_task_instance_id("traj_add_spatial_index")
         .handle_errors()
         .with_tracing()
@@ -381,13 +393,14 @@ def main(params: Params):
         .partial(
             gdf=traj_add_temporal_index,
             groupers=resolved_groupers,
-            **(params_dict.get("traj_add_spatial_index") or {}),
+            **(params.get("traj_add_spatial_index") or {}),
         )
         .call()
     )
 
     rename_traj_columns = (
-        map_columns.validate()
+        task(map_columns)
+        .validate()
         .set_task_instance_id("rename_traj_columns")
         .handle_errors()
         .with_tracing()
@@ -408,13 +421,14 @@ def main(params: Params):
                 "extra__sex": "subject_sex",
             },
             raise_if_not_found=True,
-            **(params_dict.get("rename_traj_columns") or {}),
+            **(params.get("rename_traj_columns") or {}),
         )
         .call()
     )
 
     classify_traj_speed = (
-        apply_classification.validate()
+        task(apply_classification)
+        .validate()
         .set_task_instance_id("classify_traj_speed")
         .handle_errors()
         .with_tracing()
@@ -435,13 +449,14 @@ def main(params: Params):
                 "label_decimals": 1,
                 "label_suffix": " km/h",
             },
-            **(params_dict.get("classify_traj_speed") or {}),
+            **(params.get("classify_traj_speed") or {}),
         )
         .call()
     )
 
     split_subject_traj_groups = (
-        split_groups.validate()
+        task(split_groups)
+        .validate()
         .set_task_instance_id("split_subject_traj_groups")
         .handle_errors()
         .with_tracing()
@@ -455,13 +470,14 @@ def main(params: Params):
         .partial(
             df=classify_traj_speed,
             groupers=resolved_groupers,
-            **(params_dict.get("split_subject_traj_groups") or {}),
+            **(params.get("split_subject_traj_groups") or {}),
         )
         .call()
     )
 
     base_map_defs = (
-        set_base_maps_pydeck.validate()
+        task(set_base_maps)
+        .validate()
         .set_task_instance_id("base_map_defs")
         .handle_errors()
         .with_tracing()
@@ -472,12 +488,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("base_map_defs") or {}))
+        .partial(**(params.get("base_map_defs") or {}))
         .call()
     )
 
     sort_traj_speed = (
-        sort_values.validate()
+        task(sort_values)
+        .validate()
         .set_task_instance_id("sort_traj_speed")
         .handle_errors()
         .with_tracing()
@@ -492,13 +509,14 @@ def main(params: Params):
             column_name="speed_bins",
             ascending=True,
             na_position="last",
-            **(params_dict.get("sort_traj_speed") or {}),
+            **(params.get("sort_traj_speed") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
     )
 
     colormap_traj_speed = (
-        apply_color_map.validate()
+        task(apply_color_map)
+        .validate()
         .set_task_instance_id("colormap_traj_speed")
         .handle_errors()
         .with_tracing()
@@ -513,13 +531,14 @@ def main(params: Params):
             input_column_name="speed_bins",
             output_column_name="speed_bins_colormap",
             colormap=["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"],
-            **(params_dict.get("colormap_traj_speed") or {}),
+            **(params.get("colormap_traj_speed") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=sort_traj_speed)
     )
 
     traj_map_layers = (
-        create_path_layer.validate()
+        task(create_path_layer)
+        .validate()
         .set_task_instance_id("traj_map_layers")
         .handle_errors()
         .with_tracing()
@@ -537,13 +556,14 @@ def main(params: Params):
                 "label_column": "speed_bins",
                 "color_column": "speed_bins_colormap",
             },
-            **(params_dict.get("traj_map_layers") or {}),
+            **(params.get("traj_map_layers") or {}),
         )
         .mapvalues(argnames=["geodataframe"], argvalues=colormap_traj_speed)
     )
 
     traj_ecomap = (
-        draw_map.validate()
+        task(draw_map)
+        .validate()
         .set_task_instance_id("traj_ecomap")
         .handle_errors()
         .with_tracing()
@@ -561,13 +581,14 @@ def main(params: Params):
             title=None,
             max_zoom=20,
             view_state=None,
-            **(params_dict.get("traj_ecomap") or {}),
+            **(params.get("traj_ecomap") or {}),
         )
         .mapvalues(argnames=["geo_layers"], argvalues=traj_map_layers)
     )
 
     ecomap_html_urls = (
-        persist_text.validate()
+        task(persist_text)
+        .validate()
         .set_task_instance_id("ecomap_html_urls")
         .handle_errors()
         .with_tracing()
@@ -580,13 +601,14 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            **(params_dict.get("ecomap_html_urls") or {}),
+            **(params.get("ecomap_html_urls") or {}),
         )
         .mapvalues(argnames=["text"], argvalues=traj_ecomap)
     )
 
     trend_bucket = (
-        set_string_var.validate()
+        task(set_string_var)
+        .validate()
         .set_task_instance_id("trend_bucket")
         .handle_errors()
         .with_tracing()
@@ -597,12 +619,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("trend_bucket") or {}))
+        .partial(**(params.get("trend_bucket") or {}))
         .call()
     )
 
     trend_bucket_column = (
-        concat_string_vars.validate()
+        task(concat_string_vars)
+        .validate()
         .set_task_instance_id("trend_bucket_column")
         .handle_errors()
         .with_tracing()
@@ -615,13 +638,14 @@ def main(params: Params):
         )
         .partial(
             values=["TemporalGrouper_", trend_bucket],
-            **(params_dict.get("trend_bucket_column") or {}),
+            **(params.get("trend_bucket_column") or {}),
         )
         .call()
     )
 
     traj_add_month_index = (
-        add_temporal_index.validate()
+        task(add_temporal_index)
+        .validate()
         .set_task_instance_id("traj_add_month_index")
         .handle_errors()
         .with_tracing()
@@ -637,13 +661,54 @@ def main(params: Params):
             groupers=[{"temporal_index": trend_bucket}],
             cast_to_datetime=True,
             format="mixed",
-            **(params_dict.get("traj_add_month_index") or {}),
+            **(params.get("traj_add_month_index") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
     )
 
+    traj_named_for_trend = (
+        task(rename_value_grouper_columns_to_name)
+        .validate()
+        .set_task_instance_id("traj_named_for_trend")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            groupers=resolved_groupers, **(params.get("traj_named_for_trend") or {})
+        )
+        .mapvalues(argnames=["df"], argvalues=traj_add_month_index)
+    )
+
+    trend_groupby_cols = (
+        task(trend_groupby_columns)
+        .validate()
+        .set_task_instance_id("trend_groupby_cols")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            bucket_column=trend_bucket_column,
+            groupers=resolved_groupers,
+            **(params.get("trend_groupby_cols") or {}),
+        )
+        .call()
+    )
+
     speed_trends = (
-        summarize_df.validate()
+        task(summarize_df)
+        .validate()
         .set_task_instance_id("speed_trends")
         .handle_errors()
         .with_tracing()
@@ -668,15 +733,16 @@ def main(params: Params):
                     "decimal_places": None,
                 },
             ],
-            groupby_cols=[trend_bucket_column],
+            groupby_cols=trend_groupby_cols,
             reset_index=True,
-            **(params_dict.get("speed_trends") or {}),
+            **(params.get("speed_trends") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=traj_add_month_index)
+        .mapvalues(argnames=["df"], argvalues=traj_named_for_trend)
     )
 
     persist_speed_trend_data = (
-        persist_df_wrapper.validate()
+        task(persist_df_wrapper)
+        .validate()
         .set_task_instance_id("persist_speed_trend_data")
         .handle_errors()
         .with_tracing()
@@ -691,14 +757,15 @@ def main(params: Params):
             sanitize=True,
             filename_prefix="speed_trends",
             filetypes=["parquet"],
-            **(params_dict.get("persist_speed_trend_data") or {}),
+            **(params.get("persist_speed_trend_data") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=speed_trends)
     )
 
-    gamm_model = (
-        fit_gamm_model.validate()
-        .set_task_instance_id("gamm_model")
+    trend_model = (
+        task(set_trend_model)
+        .validate()
+        .set_task_instance_id("trend_model")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -708,18 +775,36 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
+        .partial(**(params.get("trend_model") or {}))
+        .call()
+    )
+
+    trend_fit = (
+        task(fit_trend_model)
+        .validate()
+        .set_task_instance_id("trend_fit")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+                is_gamm_trend_model,
+            ],
+            unpack_depth=1,
+        )
         .partial(
             time_column="period_start",
             value_column="mean_speed_kmhr",
-            lower_bound=None,
-            upper_bound=None,
-            **(params_dict.get("gamm_model") or {}),
+            model=trend_model,
+            **(params.get("trend_fit") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
     )
 
     trend_predictions = (
-        predict_gamm_trends.validate()
+        task(predict_trend_model)
+        .validate()
         .set_task_instance_id("trend_predictions")
         .handle_errors()
         .with_tracing()
@@ -731,15 +816,129 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
+            time_column="time",
+            value_column="value",
             time_values=None,
             include_ci=True,
-            **(params_dict.get("trend_predictions") or {}),
+            **(params.get("trend_predictions") or {}),
         )
-        .mapvalues(argnames=["model_params"], argvalues=gamm_model)
+        .mapvalues(argnames=["model_params"], argvalues=trend_fit)
+    )
+
+    speed_trends_combined = (
+        task(concat_dataframes)
+        .validate()
+        .set_task_instance_id("speed_trends_combined")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            dfs=speed_trends,
+            ensure_columns=["period_start", "mean_speed_kmhr", "name"],
+            reset_index=True,
+            **(params.get("speed_trends_combined") or {}),
+        )
+        .call()
+    )
+
+    trend_fit_combined = (
+        task(fit_trend_model)
+        .validate()
+        .set_task_instance_id("trend_fit_combined")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+                is_not_gamm_trend_model,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            dataframe=speed_trends_combined,
+            time_column="period_start",
+            value_column="mean_speed_kmhr",
+            model=trend_model,
+            **(params.get("trend_fit_combined") or {}),
+        )
+        .call()
+    )
+
+    trend_predictions_gamm = (
+        task(predict_trend_model)
+        .validate()
+        .set_task_instance_id("trend_predictions_gamm")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            model_params=trend_fit_combined,
+            time_column="period_start",
+            value_column="mean_speed_kmhr",
+            time_values=None,
+            include_ci=True,
+            **(params.get("trend_predictions_gamm") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
+    )
+
+    trend_predictions_merged = (
+        task(groupbykey_passthrough_skip)
+        .validate()
+        .set_task_instance_id("trend_predictions_merged")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            iterables=[trend_predictions, trend_predictions_gamm],
+            **(params.get("trend_predictions_merged") or {}),
+        )
+        .call()
+    )
+
+    trend_predictions_final = (
+        task(concat_dataframes)
+        .validate()
+        .set_task_instance_id("trend_predictions_final")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            ensure_columns=[],
+            reset_index=True,
+            **(params.get("trend_predictions_final") or {}),
+        )
+        .mapvalues(argnames=["dfs"], argvalues=trend_predictions_merged)
     )
 
     trend_time_cast = (
-        add_temporal_index.validate()
+        task(add_temporal_index)
+        .validate()
         .set_task_instance_id("trend_time_cast")
         .handle_errors()
         .with_tracing()
@@ -755,13 +954,14 @@ def main(params: Params):
             time_col="time",
             cast_to_datetime=True,
             format="mixed",
-            **(params_dict.get("trend_time_cast") or {}),
+            **(params.get("trend_time_cast") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=trend_predictions)
+        .mapvalues(argnames=["df"], argvalues=trend_predictions_final)
     )
 
     persist_trend_data = (
-        persist_df_wrapper.validate()
+        task(persist_df_wrapper)
+        .validate()
         .set_task_instance_id("persist_trend_data")
         .handle_errors()
         .with_tracing()
@@ -776,13 +976,14 @@ def main(params: Params):
             sanitize=True,
             filename_prefix="trend_predictions",
             filetypes=["parquet"],
-            **(params_dict.get("persist_trend_data") or {}),
+            **(params.get("persist_trend_data") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=trend_time_cast)
     )
 
     speed_trend_chart = (
-        draw_historic_timeseries.validate()
+        task(draw_historic_timeseries)
+        .validate()
         .set_task_instance_id("speed_trend_chart")
         .handle_errors()
         .with_tracing()
@@ -809,13 +1010,14 @@ def main(params: Params):
             upper_lower_band_style={"mode": "lines", "line": {"color": "green"}},
             historic_mean_style=None,
             current_value_style=None,
-            **(params_dict.get("speed_trend_chart") or {}),
+            **(params.get("speed_trend_chart") or {}),
         )
         .mapvalues(argnames=["dataframe"], argvalues=trend_time_cast)
     )
 
     persist_speed_trend_chart = (
-        persist_text.validate()
+        task(persist_text)
+        .validate()
         .set_task_instance_id("persist_speed_trend_chart")
         .handle_errors()
         .with_tracing()
@@ -828,13 +1030,14 @@ def main(params: Params):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            **(params_dict.get("persist_speed_trend_chart") or {}),
+            **(params.get("persist_speed_trend_chart") or {}),
         )
         .mapvalues(argnames=["text"], argvalues=speed_trend_chart)
     )
 
     map_widget_title = (
-        set_title_var.validate()
+        task(set_string_var)
+        .validate()
         .set_task_instance_id("map_widget_title")
         .handle_errors()
         .with_tracing()
@@ -845,12 +1048,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("map_widget_title") or {}))
+        .partial(**(params.get("map_widget_title") or {}))
         .call()
     )
 
     chart_widget_title = (
-        set_title_var.validate()
+        task(set_string_var)
+        .validate()
         .set_task_instance_id("chart_widget_title")
         .handle_errors()
         .with_tracing()
@@ -861,12 +1065,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("chart_widget_title") or {}))
+        .partial(**(params.get("chart_widget_title") or {}))
         .call()
     )
 
     speed_map_widget = (
-        create_map_widget_single_view.validate()
+        task(create_map_widget_single_view)
+        .validate()
         .set_task_instance_id("speed_map_widget")
         .handle_errors()
         .with_tracing()
@@ -876,12 +1081,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(title=map_widget_title, **(params_dict.get("speed_map_widget") or {}))
+        .partial(title=map_widget_title, **(params.get("speed_map_widget") or {}))
         .map(argnames=["view", "data"], argvalues=ecomap_html_urls)
     )
 
     grouped_speed_map = (
-        merge_widget_views.validate()
+        task(merge_widget_views)
+        .validate()
         .set_task_instance_id("grouped_speed_map")
         .handle_errors()
         .with_tracing()
@@ -891,14 +1097,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            widgets=speed_map_widget, **(params_dict.get("grouped_speed_map") or {})
-        )
+        .partial(widgets=speed_map_widget, **(params.get("grouped_speed_map") or {}))
         .call()
     )
 
     speed_trend_widget = (
-        create_plot_widget_single_view.validate()
+        task(create_plot_widget_single_view)
+        .validate()
         .set_task_instance_id("speed_trend_widget")
         .handle_errors()
         .with_tracing()
@@ -908,14 +1113,13 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            title=chart_widget_title, **(params_dict.get("speed_trend_widget") or {})
-        )
+        .partial(title=chart_widget_title, **(params.get("speed_trend_widget") or {}))
         .map(argnames=["view", "data"], argvalues=persist_speed_trend_chart)
     )
 
     grouped_speed_trend = (
-        merge_widget_views.validate()
+        task(merge_widget_views)
+        .validate()
         .set_task_instance_id("grouped_speed_trend")
         .handle_errors()
         .with_tracing()
@@ -926,13 +1130,14 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            widgets=speed_trend_widget, **(params_dict.get("grouped_speed_trend") or {})
+            widgets=speed_trend_widget, **(params.get("grouped_speed_trend") or {})
         )
         .call()
     )
 
     speedmap_dashboard = (
-        gather_dashboard.validate()
+        task(gather_dashboard)
+        .validate()
         .set_task_instance_id("speedmap_dashboard")
         .handle_errors()
         .with_tracing()
@@ -948,7 +1153,7 @@ def main(params: Params):
             time_range=time_range,
             widgets=[grouped_speed_map, grouped_speed_trend],
             groupers=resolved_groupers,
-            **(params_dict.get("speedmap_dashboard") or {}),
+            **(params.get("speedmap_dashboard") or {}),
         )
         .call()
     )

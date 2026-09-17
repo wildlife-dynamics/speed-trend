@@ -1,8 +1,8 @@
 workflow_details:
-  name: Speedmap with GAMM Trends
+  name: Speedmap with Trend Analysis
   description: >-
-    Speed-classified elephant movement map and GAMM trend analysis of mean
-    walking speed over time.
+    Speed-classified elephant movement map and multi-model trend analysis of
+    mean walking speed over time.
 
 er_client_name:
   data_source:
@@ -12,7 +12,8 @@ subject_obs:
   subject_group_name: "Elephants"
 
 groupers:
-  groupers: []
+  groupers:
+    - index_name: subject_name
 
 time_range:
   since: "2008-01-01T00:00:00Z"
@@ -29,14 +30,14 @@ base_map_defs:
 trend_bucket:
   var: "%Y-%m"
 
-gamm_model:
-  optimize_alpha: false
-  alpha: 1.0
-  degree: 2
-  degree_of_freedom: 3
+trend_model:
+  model:
+    model: "gamm"
+    spline_settings:
+      degree_of_freedom: 3
 
 map_widget_title:
-  title: Subject Speed Map
+  var: Subject Speed Map
 
 chart_widget_title:
-  title: Mean Speed Trend Chart
+  var: Mean Speed Trend Chart
