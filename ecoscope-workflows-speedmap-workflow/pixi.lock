@@ -1528,7 +1528,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/sqlalchemy-2.0.52-py312hba6025d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/sqlite-3.53.4-hdea7a7b_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/statsmodels-0.15.0-np2py312ha20fd59_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/tapi-1600.0.11.8-h44950e2_3.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/tapi-1600.0.11.8-h44950e2_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tbb-2021.13.0-hf9f308f_7.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tk-8.6.13-ha6c374e_4.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/tornado-6.5.8-py312h6ea13a3_2.conda
@@ -21569,17 +21569,17 @@ packages:
   run_exports: {}
   size: 13152571
   timestamp: 1788196554118
-- conda: https://conda.anaconda.org/conda-forge/osx-64/tapi-1600.0.11.8-h44950e2_3.conda
-  sha256: ec381e40cf1caf8496265bbf14ca0d2cb947495cd3e9069947e2fa75f7de7b3b
-  md5: 9b80c76b01a3a3a78d188d5055ad47a4
+- conda: https://conda.anaconda.org/conda-forge/osx-64/tapi-1600.0.11.8-h44950e2_4.conda
+  sha256: 045e62838ec78ad75974552ebeeccbee5a4a843272da47c7a67e99fd9cc25d8d
+  md5: a70697fe1077cb11e33b11d6f6610314
   depends:
   - libcxx >=19.0.0.a0
   - __osx >=11.0
   - ncurses >=6.6,<7.0a0
   license: NCSA
   run_exports: {}
-  size: 214093
-  timestamp: 1785906287768
+  size: 216045
+  timestamp: 1789668322695
 - conda: https://conda.anaconda.org/conda-forge/osx-64/tbb-2021.13.0-hf9f308f_7.conda
   sha256: 474b9fdb1fed9bc10e14155792159c702a20df3f8c9ca1d20aa30548c1986ac6
   md5: 3d3317f2e842b1119b030fc8a06fd949

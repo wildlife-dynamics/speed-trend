@@ -535,6 +535,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
+            data_url=None,
             layer_style={"get_color": "speed_bins_colormap"},
             legend={
                 "title": "Speed",
@@ -563,6 +564,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             tile_layers=base_map_defs,
             legend_style={"placement": "bottom-right"},
             static=False,
+            output_type="html",
             title=None,
             max_zoom=20,
             view_state=None,

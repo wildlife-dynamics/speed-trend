@@ -338,6 +338,7 @@ workflow:
     id: traj_map_layers
     task: create_path_layer
     partial:
+      data_url: null
       layer_style:
         get_color: speed_bins_colormap
       legend:
@@ -356,6 +357,7 @@ workflow:
       legend_style:
         placement: bottom-right
       static: false
+      output_type: "html"
       title: null
       max_zoom: 20
       view_state: null

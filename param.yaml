@@ -6,7 +6,7 @@ workflow_details:
 
 er_client_name:
   data_source:
-    name: "EarthRanger"
+    name: "mep"
 
 subject_obs:
   subject_group_name: "Elephants"

@@ -361,12 +361,6 @@
     "traj_map_layers": {
       "additionalProperties": false,
       "properties": {
-        "data_url": {
-          "default": null,
-          "title": "Data Url",
-          "type": "string",
-          "description": "URL to a GeoJSON file to visualize."
-        },
         "tooltip_columns": {
           "default": null,
           "items": {
@@ -376,24 +370,6 @@
           "type": "array",
           "description": "Restrict the on-hover tooltip to these column names. None (default) shows all properties.",
           "ecoscope:advanced": true
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": ""
-    },
-    "traj_ecomap": {
-      "additionalProperties": false,
-      "properties": {
-        "output_type": {
-          "default": "html",
-          "enum": [
-            "html",
-            "json"
-          ],
-          "title": "Output Type",
-          "type": "string",
-          "description": "Whether to return rendered HTML or a deck.gl JSON spec dict."
         }
       },
       "type": "object",
@@ -1081,12 +1057,6 @@
         "include_subject_additional"
       ]
     },
-    "traj_map_layers": {
-      "ui:order": [
-        "data_url",
-        "tooltip_columns"
-      ]
-    },
     "ui:order": [
       "workflow_details",
       "time_range",
@@ -1097,7 +1067,6 @@
       "rename_traj_columns",
       "base_map_defs",
       "traj_map_layers",
-      "traj_ecomap",
       "trend_bucket",
       "trend_model",
       "map_widget_title",
