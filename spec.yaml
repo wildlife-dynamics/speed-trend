@@ -523,76 +523,13 @@ workflow:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}
 
-      # The raw output of the underlying statsmodels (Linear/GLM/GAM) or
-      # pymc/bambi (GAMM) fit - one row per model parameter, with a
-      # coefficient/std error/p-value/CI for the former or a posterior
-      # mean/sd/hdi/r_hat for the latter. Rendered as its own dashboard
-      # table (download built in via table_config.enable_download, so no
-      # separate raw-CSV persist is needed) - same is_gamm_trend_model/
-      # is_not_gamm_trend_model gating as the fit branches above: exactly
-      # one of trend_fit_summary (per group)/trend_fit_summary_combined (the
-      # one shared GAMM fit) produces real output for any given selection.
-      - name: ""
-        id: trend_fit_summary
-        task: get_trend_model_fit_summary
-        skipif:
-          conditions:
-            - any_is_empty_df
-            - any_dependency_skipped
-            - is_gamm_trend_model
-        partial:
-          model: ${{ workflow.trend_model.return }}
-        mapvalues:
-          argnames: model_params
-          argvalues: ${{ workflow.trend_fit.return }}
-
-      - name: ""
-        id: trend_fit_summary_table
-        task: draw_table
-        partial:
-          columns: null
-          table_config:
-            enable_sorting: true
-            enable_filtering: false
-            enable_download: true
-            hide_header: false
-        mapvalues:
-          argnames: dataframe
-          argvalues: ${{ workflow.trend_fit_summary.return }}
-
-      - name: ""
-        id: persist_trend_fit_summary_table
-        task: persist_text
-        partial:
-          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-        mapvalues:
-          argnames: text
-          argvalues: ${{ workflow.trend_fit_summary_table.return }}
-
-      - name: ""
-        id: trend_fit_summary_widget
-        task: create_plot_widget_single_view
-        skipif:
-          conditions:
-            - never
-        partial:
-          title: "Trend Model Fit Parameters"
-        map:
-          argnames: [view, data]
-          argvalues: ${{ workflow.persist_trend_fit_summary_table.return }}
-
-      - name: ""
-        id: grouped_trend_fit_summary
-        task: merge_widget_views
-        skipif:
-          conditions:
-            - never
-        partial:
-          widgets: ${{ workflow.trend_fit_summary_widget.return }}
-
-      # GAMM's combined fit is shared across every group - a single table,
-      # shown regardless of which group is selected (view: null), rather
-      # than forced per-group like the branch above.
+      # The raw output of the underlying pymc/bambi posterior fit (mean/sd/
+      # hdi/r_hat per parameter) for GAMM's combined fit - shown as its own
+      # dashboard table (download built in via table_config.enable_download).
+      # Only populated when GAMM is selected (is_not_gamm_trend_model skips
+      # it otherwise); GAMM's combined fit is shared across every group, so
+      # this is a single table shown regardless of which group is selected
+      # (view: null) rather than duplicated per group.
       - name: ""
         id: trend_fit_summary_combined
         task: get_trend_model_fit_summary
@@ -780,6 +717,5 @@ workflow:
       widgets:
         - ${{ workflow.grouped_speed_map.return }}
         - ${{ workflow.grouped_speed_trend.return }}
-        - ${{ workflow.grouped_trend_fit_summary.return }}
         - ${{ workflow.fit_summary_widget_gamm.return }}
       groupers: ${{ workflow.resolved_groupers.return }}

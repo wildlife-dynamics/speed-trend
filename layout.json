@@ -20,5 +20,16 @@
     "minW": 10,
     "minH": 12,
     "static": false
+  },
+  {
+    "i": "2",
+    "x": 0,
+    "y": 24,
+    "widget_id": 2,
+    "w": 10,
+    "h": 12,
+    "minW": 10,
+    "minH": 12,
+    "static": false
   }
 ]
