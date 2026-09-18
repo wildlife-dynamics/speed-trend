@@ -1,6 +1,6 @@
-# speedmap-trend
+# speed-trend
 
-Ecoscope workflow repository for the Speedmap with Trend Analysis workflow.
+Ecoscope workflow repository for the Speed with Trend Analysis workflow.
 Classifies EarthRanger subject movement by speed and fits a trend model
 (Linear, GLM, GAM, or GAMM) to mean speed over time.
 
