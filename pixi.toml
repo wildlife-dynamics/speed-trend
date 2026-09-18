@@ -1,32 +1,19 @@
-[project]
-name = "speedmap-trend"
+[workspace]
+platforms = ['linux-64', 'osx-arm64', 'osx-64', 'win-64']
+
+name = "speedmap"
 channels = [
-  # Uncomment the following lines to use local channels for development.
-  # "file:///tmp/ecoscope-workflows/release/artifacts/",
-  # "file:///tmp/ecoscope-workflows-custom/release/artifacts/",
   'https://repo.prefix.dev/ecoscope-workflows/',
   'https://repo.prefix.dev/ecoscope-workflows-custom/',
   'conda-forge',
 ]
-platforms = ['linux-64', 'osx-64', 'osx-arm64', 'win-64']
 
 [dependencies]
-curl = "*"
-yq = "*"
+wt-compiler = "==0.8.1"
+graphviz = "*"
 
-[feature.compile.dependencies]
-ecoscope-workflows-core = ">=0.22.17, <0.23.0"
-ecoscope-workflows-ext-custom = "0.0.41.*"
-ecoscope-workflows-ext-ecoscope = ">=0.22.17, <0.23.0"
-ecoscope-workflows-ext-gamm-trend-analysis = "0.0.1.*"
-
-[environments]
-compile = { features = [
-  "compile",
-], solve-group = "compile", no-default-feature = true }
-
-[feature.compile.tasks.compile-speedmap]
+[tasks.compile-speedmap]
 cmd = './dev/recompile.sh --install'
 
-[feature.compile.tasks.recompile-speedmap]
+[tasks.recompile-speedmap]
 cmd = './dev/recompile.sh --update'

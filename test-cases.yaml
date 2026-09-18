@@ -1,10 +1,10 @@
 all-grouper:
   name: All Grouper
-  description: Speedmap with GAMM trends using no grouping.
+  description: Speedmap with trend analysis using no grouping.
   params:
     workflow_details:
-      name: Speedmap with GAMM Trends
-      description: Speed map and GAMM mean speed trend for elephant tracks.
+      name: Speedmap with Trend Analysis
+      description: Speed map and mean speed trend for elephant tracks.
     er_client_name:
       data_source:
         name: "EarthRanger"
@@ -27,25 +27,29 @@ all-grouper:
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           opacity: 0.5
           max_zoom: 17
+    # The mock subject observations fixture spans only January 2017 - Day
+    # bucketing (rather than the param.yaml default of Month) is needed for
+    # more than one distinct time bucket to exist for the trend fit.
     trend_bucket:
-      var: "%Y-%m"
-    gamm_model:
-      optimize_alpha: false
-      alpha: 1.0
-      degree: 2
-      degree_of_freedom: 3
+      var: "%Y-%m-%d"
+    trend_model:
+      model:
+        model: "gam"
+        spline_settings:
+          degree_of_freedom: 3
+          degree: 2
     map_widget_title:
-      title: Subject Speed Map
+      var: Subject Speed Map
     chart_widget_title:
-      title: Mean Speed Trend Chart
+      var: Mean Speed Trend Chart
 
 value-grouper:
   name: Value Grouper
-  description: Speedmap with GAMM trends grouped by subject name.
+  description: Speedmap with trend analysis grouped by subject name, using a GAMM combined fit across subjects.
   params:
     workflow_details:
-      name: Speedmap with GAMM Trends
-      description: Speed map and GAMM mean speed trend grouped by subject.
+      name: Speedmap with Trend Analysis
+      description: Speed map and mean speed trend grouped by subject.
     er_client_name:
       data_source:
         name: "EarthRanger"
@@ -63,14 +67,17 @@ value-grouper:
           opacity: 1.0
         - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           opacity: 0.5
+    # See all-grouper's comment above: the mock fixture spans only January
+    # 2017, so Day bucketing is needed for more than one distinct time
+    # bucket to exist for GAMM's combined fit across subjects.
     trend_bucket:
-      var: "%Y-%m"
-    gamm_model:
-      optimize_alpha: false
-      alpha: 1.0
-      degree: 2
-      degree_of_freedom: 3
+      var: "%Y-%m-%d"
+    trend_model:
+      model:
+        model: "gamm"
+        spline_settings:
+          degree_of_freedom: 3
     map_widget_title:
-      title: Subject Speed Map
+      var: Subject Speed Map
     chart_widget_title:
-      title: Mean Speed Trend Chart
+      var: Mean Speed Trend Chart

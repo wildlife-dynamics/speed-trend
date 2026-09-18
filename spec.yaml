@@ -1,21 +1,13 @@
 id: speedmap
 
 requirements:
-  - name: ecoscope-workflows-core
-    version: ">=0.22.17, <0.23.0"
+  - name: ecoscope-platform
+    version: ">=2.25.0,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
-  - name: ecoscope-workflows-ext-ecoscope
-    version: ">=0.22.17, <0.23.0"
-    channel: https://repo.prefix.dev/ecoscope-workflows/
-
-  - name: ecoscope-workflows-ext-custom
-    version: "0.0.41.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
-  - name: ecoscope-workflows-ext-gamm-trend-analysis
-    version: "0.0.1"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  - name: pydeck
+    version: "0.9.2"
+    channel: conda-forge
 
 rjsf-overrides:
   $defs:
@@ -26,6 +18,14 @@ rjsf-overrides:
         title: Subject Subtype
       - const: subject_sex
         title: Subject Sex
+
+    # Speedmap's per-bucket, per-group series are often short and sparse
+    # (e.g. a subject tracked for only a few months) - lower these from the
+    # library-wide defaults (tuned for longer series) so GAM/GAMM fit
+    # reliably out of the box. Raise them per-run for longer time series.
+    GamSplineSettings.properties.degree_of_freedom.default: 3
+    GamSplineSettings.properties.degree.default: 2
+    GammSplineSettings.properties.degree_of_freedom.default: 3
 
   properties:
     Subject Group.properties.subject_obs.properties.subject_group_name.ecoscope:transform:
@@ -65,47 +65,71 @@ rjsf-overrides:
       - const: "%Y"
         title: Year
 
-    Trend Analysis.properties.gamm_model.properties.degree_of_freedom.default: 3
-    Trend Analysis.properties.gamm_model.properties.degree_of_freedom.description: >-
-      Degrees of freedom for the trend spline. Lower this if the fit fails
-      (e.g. for a group with few data points at the chosen Trend Time
-      Bucket); raise it for a smoother fit on longer time series with more
-      data points. Must be greater than Degree.
-
-    Trend Analysis.properties.gamm_model.properties.degree.default: 2
-    Trend Analysis.properties.gamm_model.properties.degree.description: >-
-      Degree of the trend spline (2 = quadratic). Lower values fit more
-      reliably on groups with few data points at the chosen Trend Time
-      Bucket; degree must be at least 2 for the smoothing penalty to be
-      computed.
-
-    Trend Analysis.properties.gamm_model.properties.optimize_alpha.default: false
-    Trend Analysis.properties.gamm_model.properties.optimize_alpha.description: >-
-      Automatically finds the best smoothing parameter, but can fail on
-      groups with few data points at the chosen Trend Time Bucket. Off by
-      default; turn on for a more accurate fit when there's more data.
-    Trend Analysis.properties.gamm_model.properties.alpha.default: 1.0
-    Trend Analysis.properties.gamm_model.properties.alpha.description: >-
-      Controls how smooth the trend curve is. Higher values produce a
-      smoother curve that follows the data less closely; lower values
-      follow the data more closely. Choose Manual to set a fixed value
-      (ignored unless Optimize Alpha is off), or leave as Automatic to let
-      Optimize Alpha search for the best value itself.
-    Trend Analysis.properties.gamm_model.properties.alpha.anyOf:
-      - type: number
-        title: Manual
-      - type: "null"
-        title: Automatic
-
-    Dashboard.properties.map_widget_title.properties.title.title: Map Title
-    Dashboard.properties.map_widget_title.properties.title.default: Subject Speed Map
-    Dashboard.properties.map_widget_title.properties.title.description: >-
+    Dashboard.properties.map_widget_title.properties.var.title: Map Title
+    Dashboard.properties.map_widget_title.properties.var.default: Subject Speed Map
+    Dashboard.properties.map_widget_title.properties.var.description: >-
       Title displayed on the speed map.
 
-    Dashboard.properties.chart_widget_title.properties.title.title: Trend Chart Title
-    Dashboard.properties.chart_widget_title.properties.title.default: Mean Speed Trend Chart
-    Dashboard.properties.chart_widget_title.properties.title.description: >-
-      Title displayed on the GAMM speed trend chart.
+    Dashboard.properties.chart_widget_title.properties.var.title: Trend Chart Title
+    Dashboard.properties.chart_widget_title.properties.var.default: Mean Speed Trend Chart
+    Dashboard.properties.chart_widget_title.properties.var.description: >-
+      Title displayed on the mean speed trend chart.
+  uiSchema:
+    # Hide each variant's own redundant fieldset title (repeats what the
+    # Trend Model dropdown itself already shows selected), each wrapper
+    # field's own title so only the inner field's normal-sized label shows,
+    # and the variant's own `model` const field entirely - it's a fixed,
+    # non-editable value that just repeats the dropdown selection.
+    # Positional, matching TrendModel's union order: LinearTrendModel,
+    # GlmTrendModel, GamTrendModel, GammTrendModel (see
+    # wt-hansen-deforestation's spec.yaml for the same pattern).
+    Trend Analysis.trend_model.model.anyOf:
+      - ui:options:
+          label: false
+        model:
+          ui:widget: hidden
+        intercept_settings:
+          ui:options:
+            label: false
+      - ui:options:
+          label: false
+        model:
+          ui:widget: hidden
+        family_settings:
+          ui:options:
+            label: false
+        intercept_settings:
+          ui:options:
+            label: false
+      - ui:options:
+          label: false
+        model:
+          ui:widget: hidden
+        family_settings:
+          ui:options:
+            label: false
+        smoothing_settings:
+          ui:options:
+            label: false
+        spline_settings:
+          ui:options:
+            label: false
+        bounds_settings:
+          ui:options:
+            label: false
+      - ui:options:
+          label: false
+        model:
+          ui:widget: hidden
+        family_settings:
+          ui:options:
+            label: false
+        spline_settings:
+          ui:options:
+            label: false
+        mcmc_settings:
+          ui:options:
+            label: false
 
 task-instance-defaults:
   skipif:
@@ -265,7 +289,7 @@ workflow:
 
   - name: Base Maps
     id: base_map_defs
-    task: set_base_maps_pydeck
+    task: set_base_maps
 
   - name: ""
     id: sort_traj_speed
@@ -299,6 +323,7 @@ workflow:
     id: traj_map_layers
     task: create_path_layer
     partial:
+      data_url: null
       layer_style:
         get_color: speed_bins_colormap
       legend:
@@ -317,6 +342,7 @@ workflow:
       legend_style:
         placement: bottom-right
       static: false
+      output_type: "html"
       title: null
       max_zoom: 20
       view_state: null
@@ -335,7 +361,9 @@ workflow:
 
   - title: Trend Analysis
     type: task-group
-    description: Configure the GAM trend fitting parameters for mean speed over time.
+    description: >-
+      Choose a trend model and configure its fitting parameters for mean
+      speed over time.
     tasks:
       - name: ""
         id: trend_bucket
@@ -362,6 +390,26 @@ workflow:
           argnames: df
           argvalues: ${{ workflow.split_subject_traj_groups.return }}
 
+      # Tag each already-split group's rows with a literal "name" column
+      # (whatever the active Group Data grouper's own column is called) -
+      # the convention fit_trend_model/predict_trend_model use to derive
+      # GAMM's per-site random effect below. A no-op when ungrouped.
+      - name: ""
+        id: traj_named_for_trend
+        task: rename_value_grouper_columns_to_name
+        partial:
+          groupers: ${{ workflow.resolved_groupers.return }}
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.traj_add_month_index.return }}
+
+      - name: ""
+        id: trend_groupby_cols
+        task: trend_groupby_columns
+        partial:
+          bucket_column: ${{ workflow.trend_bucket_column.return }}
+          groupers: ${{ workflow.resolved_groupers.return }}
+
       - name: ""
         id: speed_trends
         task: summarize_df
@@ -374,12 +422,11 @@ workflow:
               aggregator: min
               column: segment_start
               decimal_places: null
-          groupby_cols:
-            - ${{ workflow.trend_bucket_column.return }}
+          groupby_cols: ${{ workflow.trend_groupby_cols.return }}
           reset_index: true
         mapvalues:
           argnames: df
-          argvalues: ${{ workflow.traj_add_month_index.return }}
+          argvalues: ${{ workflow.traj_named_for_trend.return }}
 
       - name: ""
         id: persist_speed_trend_data
@@ -398,26 +445,213 @@ workflow:
           argvalues: ${{ workflow.speed_trends.return }}
 
       - name: ""
-        id: gamm_model
-        task: fit_gamm_model
+        id: trend_model
+        task: set_trend_model
+
+      # GAMM fits once across every group's combined data (a real random
+      # effect needs multiple groups in one fit; see GammTrendModel's own
+      # docstring), unlike the other 3 models which each fit independently
+      # per group - so it gets its own combined-fit branch below, gated by
+      # is_gamm_trend_model/is_not_gamm_trend_model so exactly one of the
+      # two fit branches actually runs for any given model selection. Both
+      # branches' resulting per-group predictions (trend_predictions /
+      # trend_predictions_gamm) are then merged back into one series per
+      # group via trend_predictions_merged/_final, so everything downstream
+      # (chart, persist, widget) is unaware of the branching. See
+      # wt-hansen-deforestation's spec.yaml for the same pattern applied to
+      # forest regions instead of subject groups.
+      - name: ""
+        id: trend_fit
+        task: fit_trend_model
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_gamm_trend_model
         partial:
           time_column: period_start
           value_column: mean_speed_kmhr
-          lower_bound: null
-          upper_bound: null
+          model: ${{ workflow.trend_model.return }}
         mapvalues:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}
 
       - name: ""
         id: trend_predictions
-        task: predict_gamm_trends
+        task: predict_trend_model
         partial:
+          time_column: "time"
+          value_column: "value"
           time_values: null
           include_ci: true
         mapvalues:
           argnames: model_params
-          argvalues: ${{ workflow.gamm_model.return }}
+          argvalues: ${{ workflow.trend_fit.return }}
+
+      - name: ""
+        id: speed_trends_combined
+        task: concat_dataframes
+        partial:
+          dfs: ${{ workflow.speed_trends.return }}
+          ensure_columns: ["period_start", "mean_speed_kmhr", "name"]
+          reset_index: true
+
+      - name: ""
+        id: trend_fit_combined
+        task: fit_trend_model
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_not_gamm_trend_model
+        partial:
+          dataframe: ${{ workflow.speed_trends_combined.return }}
+          time_column: period_start
+          value_column: mean_speed_kmhr
+          model: ${{ workflow.trend_model.return }}
+
+      - name: ""
+        id: trend_predictions_gamm
+        task: predict_trend_model
+        partial:
+          model_params: ${{ workflow.trend_fit_combined.return }}
+          time_column: period_start
+          value_column: mean_speed_kmhr
+          time_values: null
+          include_ci: true
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.speed_trends.return }}
+
+      # The raw output of the underlying statsmodels (Linear/GLM/GAM) or
+      # pymc/bambi (GAMM) fit - one row per model parameter, with a
+      # coefficient/std error/p-value/CI for the former or a posterior
+      # mean/sd/hdi/r_hat for the latter. Rendered as its own dashboard
+      # table (download built in via table_config.enable_download, so no
+      # separate raw-CSV persist is needed) - same is_gamm_trend_model/
+      # is_not_gamm_trend_model gating as the fit branches above: exactly
+      # one of trend_fit_summary (per group)/trend_fit_summary_combined (the
+      # one shared GAMM fit) produces real output for any given selection.
+      - name: ""
+        id: trend_fit_summary
+        task: get_trend_model_fit_summary
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_gamm_trend_model
+        partial:
+          model: ${{ workflow.trend_model.return }}
+        mapvalues:
+          argnames: model_params
+          argvalues: ${{ workflow.trend_fit.return }}
+
+      - name: ""
+        id: trend_fit_summary_table
+        task: draw_table
+        partial:
+          columns: null
+          table_config:
+            enable_sorting: true
+            enable_filtering: false
+            enable_download: true
+            hide_header: false
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.trend_fit_summary.return }}
+
+      - name: ""
+        id: persist_trend_fit_summary_table
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.trend_fit_summary_table.return }}
+
+      - name: ""
+        id: trend_fit_summary_widget
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: "Trend Model Fit Parameters"
+        map:
+          argnames: [view, data]
+          argvalues: ${{ workflow.persist_trend_fit_summary_table.return }}
+
+      - name: ""
+        id: grouped_trend_fit_summary
+        task: merge_widget_views
+        skipif:
+          conditions:
+            - never
+        partial:
+          widgets: ${{ workflow.trend_fit_summary_widget.return }}
+
+      # GAMM's combined fit is shared across every group - a single table,
+      # shown regardless of which group is selected (view: null), rather
+      # than forced per-group like the branch above.
+      - name: ""
+        id: trend_fit_summary_combined
+        task: get_trend_model_fit_summary
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_not_gamm_trend_model
+        partial:
+          model_params: ${{ workflow.trend_fit_combined.return }}
+          model: ${{ workflow.trend_model.return }}
+
+      - name: ""
+        id: trend_fit_summary_table_gamm
+        task: draw_table
+        partial:
+          dataframe: ${{ workflow.trend_fit_summary_combined.return }}
+          columns: null
+          table_config:
+            enable_sorting: true
+            enable_filtering: false
+            enable_download: true
+            hide_header: false
+
+      - name: ""
+        id: persist_fit_summary_table_gamm
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          text: ${{ workflow.trend_fit_summary_table_gamm.return }}
+
+      - name: ""
+        id: fit_summary_widget_gamm
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: "Trend Model Fit Parameters"
+          view: null
+          data: ${{ workflow.persist_fit_summary_table_gamm.return }}
+
+      - name: ""
+        id: trend_predictions_merged
+        task: groupbykey_passthrough_skip
+        partial:
+          iterables:
+            - ${{ workflow.trend_predictions.return }}
+            - ${{ workflow.trend_predictions_gamm.return }}
+
+      - name: ""
+        id: trend_predictions_final
+        task: concat_dataframes
+        partial:
+          ensure_columns: []
+          reset_index: true
+        mapvalues:
+          argnames: dfs
+          argvalues: ${{ workflow.trend_predictions_merged.return }}
 
       - name: ""
         id: trend_time_cast
@@ -429,7 +663,7 @@ workflow:
           format: mixed
         mapvalues:
           argnames: df
-          argvalues: ${{ workflow.trend_predictions.return }}
+          argvalues: ${{ workflow.trend_predictions_final.return }}
 
       - name: ""
         id: persist_trend_data
@@ -489,11 +723,11 @@ workflow:
     tasks:
       - name: ""
         id: map_widget_title
-        task: set_title_var
+        task: set_string_var
 
       - name: ""
         id: chart_widget_title
-        task: set_title_var
+        task: set_string_var
 
   - name: ""
     id: speed_map_widget
@@ -546,4 +780,6 @@ workflow:
       widgets:
         - ${{ workflow.grouped_speed_map.return }}
         - ${{ workflow.grouped_speed_trend.return }}
+        - ${{ workflow.grouped_trend_fit_summary.return }}
+        - ${{ workflow.fit_summary_widget_gamm.return }}
       groupers: ${{ workflow.resolved_groupers.return }}
