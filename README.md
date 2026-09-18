@@ -49,7 +49,7 @@ repeated-measures data across individual animals); grouping by a coarser
 attribute (Subject Subtype, Subject Sex) or leaving groupers empty pools
 across whatever coarser groups are being viewed side by side instead.
 
-Speedmap's per-bucket, per-group series are often much shorter and sparser
+Speed-trend's per-bucket, per-group series are often much shorter and sparser
 than Hansen's yearly regional series (e.g. a subject tracked for only a
 few weeks) - `spec.yaml`'s `rjsf-overrides` lower `GamSplineSettings`/
 `GammSplineSettings`'s degrees-of-freedom defaults accordingly, and the
