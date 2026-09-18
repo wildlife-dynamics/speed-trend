@@ -43,6 +43,9 @@ get_spatial_features_group = create_func_magicmock(  # 🧪
     func_name="get_spatial_features_group",  # 🧪
 )  # 🧪
 from ecoscope.platform.tasks.analysis import fit_trend_model as fit_trend_model
+from ecoscope.platform.tasks.analysis import (
+    get_trend_model_fit_summary as get_trend_model_fit_summary,
+)
 from ecoscope.platform.tasks.analysis import predict_trend_model as predict_trend_model
 from ecoscope.platform.tasks.analysis import set_trend_model as set_trend_model
 from ecoscope.platform.tasks.analysis import summarize_df as summarize_df
@@ -77,6 +80,7 @@ from ecoscope.platform.tasks.results import (
     draw_historic_timeseries as draw_historic_timeseries,
 )
 from ecoscope.platform.tasks.results import draw_map as draw_map
+from ecoscope.platform.tasks.results import draw_table as draw_table
 from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
 from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
 from ecoscope.platform.tasks.results import set_base_maps as set_base_maps
@@ -897,6 +901,199 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
     )
 
+    trend_fit_summary = (
+        task(get_trend_model_fit_summary)
+        .validate()
+        .set_task_instance_id("trend_fit_summary")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+                is_gamm_trend_model,
+            ],
+            unpack_depth=1,
+        )
+        .partial(model=trend_model, **(params.get("trend_fit_summary") or {}))
+        .mapvalues(argnames=["model_params"], argvalues=trend_fit)
+    )
+
+    trend_fit_summary_table = (
+        task(draw_table)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_table")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            columns=None,
+            table_config={
+                "enable_sorting": True,
+                "enable_filtering": False,
+                "enable_download": True,
+                "hide_header": False,
+            },
+            **(params.get("trend_fit_summary_table") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=trend_fit_summary)
+    )
+
+    persist_trend_fit_summary_table = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_trend_fit_summary_table")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            **(params.get("persist_trend_fit_summary_table") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=trend_fit_summary_table)
+    )
+
+    trend_fit_summary_widget = (
+        task(create_plot_widget_single_view)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Trend Model Fit Parameters",
+            **(params.get("trend_fit_summary_widget") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=persist_trend_fit_summary_table)
+    )
+
+    grouped_trend_fit_summary = (
+        task(merge_widget_views)
+        .validate()
+        .set_task_instance_id("grouped_trend_fit_summary")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=trend_fit_summary_widget,
+            **(params.get("grouped_trend_fit_summary") or {}),
+        )
+        .call()
+    )
+
+    trend_fit_summary_combined = (
+        task(get_trend_model_fit_summary)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_combined")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+                is_not_gamm_trend_model,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            model_params=trend_fit_combined,
+            model=trend_model,
+            **(params.get("trend_fit_summary_combined") or {}),
+        )
+        .call()
+    )
+
+    trend_fit_summary_table_gamm = (
+        task(draw_table)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_table_gamm")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            dataframe=trend_fit_summary_combined,
+            columns=None,
+            table_config={
+                "enable_sorting": True,
+                "enable_filtering": False,
+                "enable_download": True,
+                "hide_header": False,
+            },
+            **(params.get("trend_fit_summary_table_gamm") or {}),
+        )
+        .call()
+    )
+
+    persist_fit_summary_table_gamm = (
+        task(persist_text)
+        .validate()
+        .set_task_instance_id("persist_fit_summary_table_gamm")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            text=trend_fit_summary_table_gamm,
+            **(params.get("persist_fit_summary_table_gamm") or {}),
+        )
+        .call()
+    )
+
+    fit_summary_widget_gamm = (
+        task(create_plot_widget_single_view)
+        .validate()
+        .set_task_instance_id("fit_summary_widget_gamm")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Trend Model Fit Parameters",
+            view=None,
+            data=persist_fit_summary_table_gamm,
+            **(params.get("fit_summary_widget_gamm") or {}),
+        )
+        .call()
+    )
+
     trend_predictions_merged = (
         task(groupbykey_passthrough_skip)
         .validate()
@@ -1153,7 +1350,12 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             details=workflow_details,
             time_range=time_range,
-            widgets=[grouped_speed_map, grouped_speed_trend],
+            widgets=[
+                grouped_speed_map,
+                grouped_speed_trend,
+                grouped_trend_fit_summary,
+                fit_summary_widget_gamm,
+            ],
             groupers=resolved_groupers,
             **(params.get("speedmap_dashboard") or {}),
         )

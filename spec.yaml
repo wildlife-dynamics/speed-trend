@@ -1,23 +1,8 @@
 id: speedmap
 
 requirements:
-  # DEV ONLY: ecoscope-platform stays a normal published conda dependency
-  # here even though this workflow depends on unpublished code (the
-  # multi-model trend analysis tasks, plus the new trend_groupby_columns/
-  # rename_value_grouper_columns_to_name helpers that let GAMM's combined
-  # fit pool across whichever group the user is viewing) - the unpublished
-  # branch is shadowed in via PYTHONPATH at compile/run time instead of
-  # listed here as an editable-local requirement (see
-  # wt-hansen-deforestation's spec.yaml for the full rationale/precedent).
-  #
-  # Compile and run with:
-  #   PYTHONPATH=/absolute/path/to/local/ecoscope ./dev/recompile.sh
-  #   PYTHONPATH=/absolute/path/to/local/ecoscope pixi run <workflow CLI/tests>
-  #
-  # Revert to a plain published pin (no PYTHONPATH needed) once a released
-  # ecoscope-platform version actually contains this code.
   - name: ecoscope-platform
-    version: ">=2.18.0,<3.0.0"
+    version: ">=2.25.0,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: pydeck
@@ -538,6 +523,118 @@ workflow:
           argnames: dataframe
           argvalues: ${{ workflow.speed_trends.return }}
 
+      # The raw output of the underlying statsmodels (Linear/GLM/GAM) or
+      # pymc/bambi (GAMM) fit - one row per model parameter, with a
+      # coefficient/std error/p-value/CI for the former or a posterior
+      # mean/sd/hdi/r_hat for the latter. Rendered as its own dashboard
+      # table (download built in via table_config.enable_download, so no
+      # separate raw-CSV persist is needed) - same is_gamm_trend_model/
+      # is_not_gamm_trend_model gating as the fit branches above: exactly
+      # one of trend_fit_summary (per group)/trend_fit_summary_combined (the
+      # one shared GAMM fit) produces real output for any given selection.
+      - name: ""
+        id: trend_fit_summary
+        task: get_trend_model_fit_summary
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_gamm_trend_model
+        partial:
+          model: ${{ workflow.trend_model.return }}
+        mapvalues:
+          argnames: model_params
+          argvalues: ${{ workflow.trend_fit.return }}
+
+      - name: ""
+        id: trend_fit_summary_table
+        task: draw_table
+        partial:
+          columns: null
+          table_config:
+            enable_sorting: true
+            enable_filtering: false
+            enable_download: true
+            hide_header: false
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.trend_fit_summary.return }}
+
+      - name: ""
+        id: persist_trend_fit_summary_table
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.trend_fit_summary_table.return }}
+
+      - name: ""
+        id: trend_fit_summary_widget
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: "Trend Model Fit Parameters"
+        map:
+          argnames: [view, data]
+          argvalues: ${{ workflow.persist_trend_fit_summary_table.return }}
+
+      - name: ""
+        id: grouped_trend_fit_summary
+        task: merge_widget_views
+        skipif:
+          conditions:
+            - never
+        partial:
+          widgets: ${{ workflow.trend_fit_summary_widget.return }}
+
+      # GAMM's combined fit is shared across every group - a single table,
+      # shown regardless of which group is selected (view: null), rather
+      # than forced per-group like the branch above.
+      - name: ""
+        id: trend_fit_summary_combined
+        task: get_trend_model_fit_summary
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - is_not_gamm_trend_model
+        partial:
+          model_params: ${{ workflow.trend_fit_combined.return }}
+          model: ${{ workflow.trend_model.return }}
+
+      - name: ""
+        id: trend_fit_summary_table_gamm
+        task: draw_table
+        partial:
+          dataframe: ${{ workflow.trend_fit_summary_combined.return }}
+          columns: null
+          table_config:
+            enable_sorting: true
+            enable_filtering: false
+            enable_download: true
+            hide_header: false
+
+      - name: ""
+        id: persist_fit_summary_table_gamm
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          text: ${{ workflow.trend_fit_summary_table_gamm.return }}
+
+      - name: ""
+        id: fit_summary_widget_gamm
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: "Trend Model Fit Parameters"
+          view: null
+          data: ${{ workflow.persist_fit_summary_table_gamm.return }}
+
       - name: ""
         id: trend_predictions_merged
         task: groupbykey_passthrough_skip
@@ -683,4 +780,6 @@ workflow:
       widgets:
         - ${{ workflow.grouped_speed_map.return }}
         - ${{ workflow.grouped_speed_trend.return }}
+        - ${{ workflow.grouped_trend_fit_summary.return }}
+        - ${{ workflow.fit_summary_widget_gamm.return }}
       groupers: ${{ workflow.resolved_groupers.return }}

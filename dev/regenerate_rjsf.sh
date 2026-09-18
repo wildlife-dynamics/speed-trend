@@ -8,10 +8,6 @@
 #      (which needs the root env's wt_compiler/wt_contracts packages) to
 #      build the final, spec.yaml-shaped, rjsf-overrides-applied rjsf.json.
 #
-# Set PYTHONPATH before invoking this to shadow in an unpublished local
-# ecoscope checkout (same as dev/recompile.sh) - it's inherited by both
-# the wt-registry scan and the wt-compiler schema-generation step below.
-#
 # Usage: ./dev/regenerate_rjsf.sh
 
 set -e

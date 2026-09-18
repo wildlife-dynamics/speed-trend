@@ -59,6 +59,49 @@ UI form - `param.yaml`/`test-cases.yaml` must set the same fields explicitly
 since a headless run without form defaults otherwise falls back to
 `ecoscope`'s own library-wide pydantic defaults.
 
+### Trend Model Fit Parameters table
+
+Alongside the trend chart, the dashboard shows a **Trend Model Fit
+Parameters** table - the raw output of the model's own fit, one row per
+parameter, for inspecting the fit itself rather than just its predicted
+curve. Since GAMM fits once combined across every group, its table is the
+*same* one shared fit for every group - shown once, unfiltered, rather
+than duplicated per group like the per-group models' tables.
+
+**Columns**, which differ by model since GAMM's fit is Bayesian and the
+other three are frequentist:
+
+| Model | Columns |
+|---|---|
+| Linear / GLM / GAM | `coefficient`, `std_error`, `p_value`, `ci_lower`, `ci_upper` |
+| GAMM | `mean`, `sd`, `eti89_lb`, `eti89_ub`, `ess_bulk`, `ess_tail`, `r_hat` |
+
+For GAMM: `eti89_lb`/`eti89_ub` is the 89% credible interval;
+`ess_bulk`/`ess_tail` is the effective sample size (low values mean the
+MCMC chains didn't mix well); `r_hat` should be close to 1.0 - values
+above ~1.01 mean the chains disagree and the fit needs more draws/tuning
+to trust.
+
+The table itself has sorting and CSV download built in
+(`table_config.enable_download`), so there's no separate raw-CSV file for
+this alongside it.
+
+**Rows** - what each parameter name means:
+
+| Row (GAMM) | Meaning |
+|---|---|
+| `sigma` | Residual noise: how much observed speed varies around the fitted curve after accounting for everything else. |
+| `Intercept` | The population-level baseline: average mean speed across *all* groups combined, on the model's internal (centered/scaled) scale. |
+| `bs(year, df=N)[0]`, `[1]`, ... | Spline basis coefficients that together draw the smooth trend curve's *shape* over time - not speed values on their own, weights on B-spline basis functions that only make sense combined. |
+| `1\|site_id_sigma` | The between-group variance: how much groups typically differ from each other. Small = groups behave similarly; large = groups vary a lot. |
+| `1\|site_id[<name>]` | One row per group: that specific group's own offset from the population baseline (`Intercept`) - the actual random effect, i.e. how much faster/slower *this* group is than the shared average. |
+
+| Row (Linear / GLM / GAM) | Meaning |
+|---|---|
+| `const` | The intercept: the baseline mean speed the line/curve starts from. |
+| `x1` (Linear/GLM) | The slope: how much mean speed changes per unit of time. |
+| `x0_s0`, `x0_s1`, ... (GAM) | Spline basis coefficients (same idea as GAMM's `bs(...)` terms above) - not speed values on their own, but what shapes the fit. |
+
 ## Workflow Development
 
 1. Update the workflow:
@@ -81,7 +124,7 @@ since a headless run without form defaults otherwise falls back to
    To iterate on `rjsf-overrides`/UI schema alone without a full recompile
    (no environment resolution, seconds instead of minutes), use:
    ```bash
-   PYTHONPATH=/absolute/path/to/local/ecoscope ./dev/regenerate_rjsf.sh
+   ./dev/regenerate_rjsf.sh
    ```
 
 3. Test the workflow. First set up your output directory:

@@ -19,7 +19,7 @@ platforms = [
 linux = "4.4.0"
 
 [dependencies.ecoscope-platform]
-version = ">=2.18.0,<3.0.0"
+version = ">=2.25.0,<3.0.0"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.pydeck]
