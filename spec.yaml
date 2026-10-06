@@ -1,12 +1,50 @@
 id: speedmap
 
 requirements:
+  # DEV ONLY: ecoscope-platform stays a normal published conda dependency
+  # here even though we're testing unpublished code (dropping the GLM trend
+  # model and making GAM Bayesian/PyMC like GAMM, branch
+  # feat/gam-gamm-pymc-drop-glm) - the unpublished branch is shadowed in via
+  # PYTHONPATH at compile/run time instead of listed here as an
+  # editable-local requirement (see wt-hansen-deforestation's spec.yaml for
+  # the full rationale).
+  #
+  # Compile and run with:
+  #   PYTHONPATH=/absolute/path/to/local/ecoscope ./dev/recompile.sh
+  #   PYTHONPATH=/absolute/path/to/local/ecoscope pixi run <workflow CLI/tests>
+  #
+  # Revert to a plain published pin (no PYTHONPATH needed) once a released
+  # ecoscope-platform version actually contains this code.
   - name: ecoscope-platform
     version: ">=2.25.0,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: pydeck
     version: "0.9.2"
+    channel: conda-forge
+
+  # Without these, conda can resolve an old arviz/arviz-plots pair
+  # (0.23.4/0.8.0 as observed) that's incompatible with the matplotlib
+  # version also resolved here (arviz_plots.__init__ calls the private
+  # matplotlib.style.core API, removed in newer matplotlib) - breaks GAM/
+  # GAMM on `import bambi`/`import arviz` with AttributeError: module
+  # 'matplotlib.style' has no attribute 'core'. Pinning arviz alone then
+  # breaks the old bambi/pymc conda resolves too (they still call
+  # arviz.concat, removed in arviz>=1.0) - so bambi/pymc need bumping in
+  # step with arviz. See wt-hansen-deforestation's spec.yaml for the same
+  # pin, re-added there after an unpinned solve hit this exact failure
+  # during a recompile.
+  - name: arviz
+    version: ">=1.0.0"
+    channel: conda-forge
+  - name: arviz-plots
+    version: ">=1.0.0"
+    channel: conda-forge
+  - name: bambi
+    version: ">=0.20.0"
+    channel: conda-forge
+  - name: pymc
+    version: ">=6.0.0"
     channel: conda-forge
 
 rjsf-overrides:
@@ -20,11 +58,13 @@ rjsf-overrides:
         title: Subject Sex
 
     # Speedmap's per-bucket, per-group series are often short and sparse
-    # (e.g. a subject tracked for only a few months) - lower these from the
-    # library-wide defaults (tuned for longer series) so GAM/GAMM fit
-    # reliably out of the box. Raise them per-run for longer time series.
-    GamSplineSettings.properties.degree_of_freedom.default: 3
-    GamSplineSettings.properties.degree.default: 2
+    # (e.g. a subject tracked for only a few months) - lower this from the
+    # library-wide default (tuned for longer series) so GAM/GAMM fit
+    # reliably out of the box. Raise it per-run for longer time series.
+    # GAM and GAMM now share this one settings class (GammSplineSettings) -
+    # GAM lost its own separate degree/degree_of_freedom fields when it
+    # moved to PyMC/Bambi, same machinery as GAMM minus the per-site random
+    # effect.
     GammSplineSettings.properties.degree_of_freedom.default: 3
 
   properties:
@@ -98,8 +138,11 @@ rjsf-overrides:
     # and the variant's own `model` const field entirely - it's a fixed,
     # non-editable value that just repeats the dropdown selection.
     # Positional, matching TrendModel's union order: LinearTrendModel,
-    # GlmTrendModel, GamTrendModel, GammTrendModel (see
-    # wt-hansen-deforestation's spec.yaml for the same pattern).
+    # GamTrendModel, GammTrendModel (see wt-hansen-deforestation's spec.yaml
+    # for the same pattern). GAM and GAMM now have identical field shapes
+    # (GAM lost GLM's old smoothing_settings/bounds_settings when it moved
+    # to PyMC/Bambi, same machinery as GAMM minus the per-site random
+    # effect).
     Trend Analysis.trend_model.model.anyOf:
       - ui:options:
           label: false
@@ -115,23 +158,10 @@ rjsf-overrides:
         family_settings:
           ui:options:
             label: false
-        intercept_settings:
-          ui:options:
-            label: false
-      - ui:options:
-          label: false
-        model:
-          ui:widget: hidden
-        family_settings:
-          ui:options:
-            label: false
-        smoothing_settings:
-          ui:options:
-            label: false
         spline_settings:
           ui:options:
             label: false
-        bounds_settings:
+        mcmc_settings:
           ui:options:
             label: false
       - ui:options:
@@ -467,7 +497,7 @@ workflow:
 
       # GAMM fits once across every group's combined data (a real random
       # effect needs multiple groups in one fit; see GammTrendModel's own
-      # docstring), unlike the other 3 models which each fit independently
+      # docstring), unlike Linear and GAM which each fit independently
       # per group - so it gets its own combined-fit branch below, gated by
       # is_gamm_trend_model/is_not_gamm_trend_model so exactly one of the
       # two fit branches actually runs for any given model selection. Both

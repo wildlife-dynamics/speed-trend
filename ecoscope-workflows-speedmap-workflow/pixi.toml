@@ -26,6 +26,22 @@ channel = "https://repo.prefix.dev/ecoscope-workflows/"
 version = "==0.9.2"
 channel = "https://conda.anaconda.org/conda-forge/"
 
+[dependencies.arviz]
+version = ">=1.0.0"
+channel = "https://conda.anaconda.org/conda-forge/"
+
+[dependencies.arviz-plots]
+version = ">=1.0.0"
+channel = "https://conda.anaconda.org/conda-forge/"
+
+[dependencies.bambi]
+version = ">=0.20.0"
+channel = "https://conda.anaconda.org/conda-forge/"
+
+[dependencies.pymc]
+version = ">=6.0.0"
+channel = "https://conda.anaconda.org/conda-forge/"
+
 [dependencies.click]
 version = ">=8.0.0,<9.0.0"
 channel = "https://conda.anaconda.org/conda-forge/"

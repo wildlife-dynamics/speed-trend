@@ -455,9 +455,6 @@
                   "$ref": "#/$defs/LinearTrendModel"
                 },
                 {
-                  "$ref": "#/$defs/GlmTrendModel"
-                },
-                {
                   "$ref": "#/$defs/GamTrendModel"
                 },
                 {
@@ -719,100 +716,8 @@
       "title": "AddInterceptSettings",
       "type": "object"
     },
-    "GamFamilySettings": {
-      "properties": {
-        "family": {
-          "default": "gaussian",
-          "description": "Distribution assumed for the response variable.",
-          "ecoscope:advanced": true,
-          "oneOf": [
-            {
-              "const": "gaussian",
-              "title": "Gaussian"
-            },
-            {
-              "const": "poisson",
-              "title": "Poisson"
-            },
-            {
-              "const": "binomial",
-              "title": "Binomial"
-            }
-          ],
-          "title": "Distribution Family",
-          "type": "string"
-        }
-      },
-      "title": "GamFamilySettings",
-      "type": "object"
-    },
-    "GamSmoothingSettings": {
-      "properties": {
-        "alpha": {
-          "default": null,
-          "description": "Fixed smoothing strength. Leave empty to select automatically via cross-validation.",
-          "ecoscope:advanced": true,
-          "title": "Smoothing Parameter (Alpha)",
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "metric": {
-          "default": "aic",
-          "description": "Used only when Alpha is left empty.",
-          "ecoscope:advanced": true,
-          "oneOf": [
-            {
-              "const": "aic",
-              "title": "AIC"
-            },
-            {
-              "const": "bic",
-              "title": "BIC"
-            },
-            {
-              "const": "euclidean",
-              "title": "Euclidean Distance"
-            },
-            {
-              "const": "mse",
-              "title": "MSE"
-            },
-            {
-              "const": "r_squared",
-              "title": "R-Squared"
-            }
-          ],
-          "title": "Alpha Selection Metric",
-          "type": "string"
-        }
-      },
-      "title": "GamSmoothingSettings",
-      "type": "object"
-    },
-    "GamSplineSettings": {
-      "properties": {
-        "degree_of_freedom": {
-          "default": 3,
-          "description": "Number of basis functions for the spline. Higher values allow more flexible curves but risk overfitting.",
-          "ecoscope:advanced": true,
-          "title": "Spline Degrees of Freedom",
-          "type": "integer"
-        },
-        "degree": {
-          "default": 2,
-          "description": "Polynomial degree of each spline segment (3 = cubic).",
-          "ecoscope:advanced": true,
-          "title": "Spline Degree",
-          "type": "integer"
-        }
-      },
-      "title": "GamSplineSettings",
-      "type": "object"
-    },
     "GamTrendModel": {
-      "description": "Generalized additive model via B-splines. Smooths the trend rather\nthan fitting a straight line; the recommended default for most trend\ncharts.",
+      "description": "Bayesian generalized additive model via B-splines, fit with PyMC\n(through Bambi). Smooths the trend rather than fitting a straight line;\nthe recommended default for most trend charts. Like GammTrendModel but\nwith no per-site random effect - fits and predicts independently per\nsite rather than pooling across sites (see GammTrendModel's docstring\nfor when that pooling applies).",
       "properties": {
         "model": {
           "const": "gam",
@@ -826,7 +731,7 @@
         "family_settings": {
           "allOf": [
             {
-              "$ref": "#/$defs/GamFamilySettings"
+              "$ref": "#/$defs/GammFamilySettings"
             }
           ],
           "default": {
@@ -835,31 +740,33 @@
           "ecoscope:advanced": true,
           "title": "Distribution Family"
         },
-        "smoothing_settings": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/GamSmoothingSettings"
-            }
-          ],
-          "default": {
-            "alpha": null,
-            "metric": "aic"
-          },
-          "ecoscope:advanced": true,
-          "title": "Smoothing"
-        },
         "spline_settings": {
           "allOf": [
             {
-              "$ref": "#/$defs/GamSplineSettings"
+              "$ref": "#/$defs/GammSplineSettings"
             }
           ],
           "default": {
-            "degree_of_freedom": 6,
-            "degree": 3
+            "degree_of_freedom": 10
           },
           "ecoscope:advanced": true,
           "title": "Spline Shape"
+        },
+        "mcmc_settings": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/GammMcmcSettings"
+            }
+          ],
+          "default": {
+            "inference_method": "mcmc",
+            "draws": 500,
+            "tune": null,
+            "chains": 2,
+            "random_seed": null
+          },
+          "ecoscope:advanced": true,
+          "title": "MCMC Sampling"
         }
       },
       "title": "Generalized Additive Model (GAM)",
@@ -967,7 +874,7 @@
       "type": "object"
     },
     "GammTrendModel": {
-      "description": "Bayesian generalized additive mixed model with per-site random\neffects. A workflow fits this once across every site's combined data\n(site_ids derived automatically from a \"name\" column if present - see\nfit_trend_model), then predicts each site's own group-specific curve\nfrom that shared fit (see predict_trend_model's `dataframe` parameter) -\nunlike the other three models, which each fit and predict independently\nper site. Mainly useful here for its Bayesian credible intervals rather\nthan frequentist confidence intervals, at the added cost of MCMC\nsampling - both fitting and (since a fitted estimator can't cross a task\nboundary) every downstream prediction refit this model from scratch,\nmaking it substantially slower than the other three.",
+      "description": "Bayesian generalized additive mixed model with per-site random\neffects. A workflow fits this once across every site's combined data\n(site_ids derived automatically from a \"name\" column if present - see\nfit_trend_model), then predicts each site's own group-specific curve\nfrom that shared fit (see predict_trend_model's `dataframe` parameter) -\nunlike Linear and GAM, which each fit and predict independently per\nsite. Both this and GAM are Bayesian (fit via PyMC/Bambi), giving\ngenuine credible intervals rather than frequentist confidence intervals,\nat the added cost of MCMC sampling - both fitting and (since a fitted\nestimator can't cross a task boundary) every downstream prediction refit\nthis model from scratch, making it substantially slower than Linear.",
       "properties": {
         "model": {
           "const": "gamm",
@@ -1020,77 +927,6 @@
         }
       },
       "title": "Generalized Additive Mixed Model (GAMM)",
-      "type": "object"
-    },
-    "GlmFamilySettings": {
-      "properties": {
-        "family": {
-          "default": "gaussian",
-          "description": "Distribution assumed for the response variable.",
-          "ecoscope:advanced": true,
-          "oneOf": [
-            {
-              "const": "gaussian",
-              "title": "Gaussian"
-            },
-            {
-              "const": "poisson",
-              "title": "Poisson"
-            },
-            {
-              "const": "binomial",
-              "title": "Binomial"
-            },
-            {
-              "const": "gamma",
-              "title": "Gamma"
-            }
-          ],
-          "title": "Distribution Family",
-          "type": "string"
-        }
-      },
-      "title": "GlmFamilySettings",
-      "type": "object"
-    },
-    "GlmTrendModel": {
-      "description": "Generalized linear model. Baseline for comparison against the smoothed\nmodels below - not recommended as the final trend line.",
-      "properties": {
-        "model": {
-          "const": "glm",
-          "default": "glm",
-          "enum": [
-            "glm"
-          ],
-          "title": "Model",
-          "type": "string"
-        },
-        "family_settings": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/GlmFamilySettings"
-            }
-          ],
-          "default": {
-            "family": "gaussian"
-          },
-          "ecoscope:advanced": true,
-          "title": "Distribution Family"
-        },
-        "intercept_settings": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/AddInterceptSettings"
-            }
-          ],
-          "default": {
-            "add_intercept": true
-          },
-          "ecoscope:advanced": true,
-          "title": "Add Intercept"
-        }
-      },
-      "title": "Generalized Linear Model (GLM)",
       "type": "object"
     },
     "LinearTrendModel": {
@@ -1177,35 +1013,12 @@
                   "label": false
                 }
               },
-              "intercept_settings": {
-                "ui:options": {
-                  "label": false
-                }
-              }
-            },
-            {
-              "ui:options": {
-                "label": false
-              },
-              "model": {
-                "ui:widget": "hidden"
-              },
-              "family_settings": {
-                "ui:options": {
-                  "label": false
-                }
-              },
-              "smoothing_settings": {
-                "ui:options": {
-                  "label": false
-                }
-              },
               "spline_settings": {
                 "ui:options": {
                   "label": false
                 }
               },
-              "bounds_settings": {
+              "mcmc_settings": {
                 "ui:options": {
                   "label": false
                 }
