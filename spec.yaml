@@ -299,6 +299,7 @@ workflow:
         extra__subject_subtype: subject_subtype
         extra__sex: subject_sex
       raise_if_not_found: true
+      duplicate_strategy: suffix
 
   - name: ""
     id: classify_traj_speed
@@ -365,6 +366,7 @@ workflow:
         title: Speed
         label_column: speed_bins
         color_column: speed_bins_colormap
+      tooltip_columns: null
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.colormap_traj_speed.return }}
