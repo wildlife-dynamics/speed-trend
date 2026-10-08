@@ -1,22 +1,10 @@
 id: speedmap
 
 requirements:
-  # DEV ONLY: ecoscope-platform stays a normal published conda dependency
-  # here even though we're testing unpublished code (dropping the GLM trend
-  # model and making GAM Bayesian/PyMC like GAMM, branch
-  # feat/gam-gamm-pymc-drop-glm) - the unpublished branch is shadowed in via
-  # PYTHONPATH at compile/run time instead of listed here as an
-  # editable-local requirement (see wt-hansen-deforestation's spec.yaml for
-  # the full rationale).
-  #
-  # Compile and run with:
-  #   PYTHONPATH=/absolute/path/to/local/ecoscope ./dev/recompile.sh
-  #   PYTHONPATH=/absolute/path/to/local/ecoscope pixi run <workflow CLI/tests>
-  #
-  # Revert to a plain published pin (no PYTHONPATH needed) once a released
-  # ecoscope-platform version actually contains this code.
+  # 2.25.3 is the first published version with the GLM-drop/GAM-Bayesian
+  # work (ecoscope#848) - no more PYTHONPATH shadow needed.
   - name: ecoscope-platform
-    version: ">=2.25.0,<3.0.0"
+    version: ">=2.25.3,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: pydeck
