@@ -410,6 +410,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "extra__sex": "subject_sex",
             },
             raise_if_not_found=True,
+            duplicate_strategy="suffix",
             **(params.get("rename_traj_columns") or {}),
         )
         .call()
@@ -546,6 +547,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "label_column": "speed_bins",
                 "color_column": "speed_bins_colormap",
             },
+            tooltip_columns=None,
             **(params.get("traj_map_layers") or {}),
         )
         .mapvalues(argnames=["geodataframe"], argvalues=colormap_traj_speed)

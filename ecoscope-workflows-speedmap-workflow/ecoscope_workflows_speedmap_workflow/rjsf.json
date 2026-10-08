@@ -175,27 +175,6 @@
       "type": "object",
       "title": "Convert Relocations to Trajectory"
     },
-    "rename_traj_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "duplicate_strategy": {
-          "default": "suffix",
-          "enum": [
-            "suffix",
-            "skip",
-            "overwrite",
-            "error"
-          ],
-          "title": "Duplicate Strategy",
-          "type": "string",
-          "description": "Strategy for handling a rename whose new name is already taken. 'suffix': append _1, _2, etc. to the new name; 'skip': skip the rename, leaving the column under its original name; 'overwrite': replace the existing column; 'error': raise ValueError.",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": ""
-    },
     "base_map_defs": {
       "additionalProperties": false,
       "properties": {
@@ -388,24 +367,6 @@
       "type": "object",
       "required": [],
       "title": "Base Maps"
-    },
-    "traj_map_layers": {
-      "additionalProperties": false,
-      "properties": {
-        "tooltip_columns": {
-          "default": null,
-          "items": {
-            "type": "string"
-          },
-          "title": "Tooltip Columns",
-          "type": "array",
-          "description": "Restrict the on-hover tooltip to these column names. None (default) shows all properties.",
-          "ecoscope:advanced": true
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": ""
     },
     "Trend Analysis": {
       "type": "object",
@@ -1064,9 +1025,7 @@
       "Subject Group",
       "Group Data",
       "subject_traj",
-      "rename_traj_columns",
       "base_map_defs",
-      "traj_map_layers",
       "Trend Analysis",
       "Dashboard"
     ]
