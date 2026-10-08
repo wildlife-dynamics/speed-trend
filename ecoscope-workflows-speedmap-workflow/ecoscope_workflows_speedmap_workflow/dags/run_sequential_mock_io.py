@@ -901,10 +901,28 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
     )
 
-    trend_fit_summary_combined = (
+    trend_fit_summary = (
         task(get_trend_model_fit_summary)
         .validate()
-        .set_task_instance_id("trend_fit_summary_combined")
+        .set_task_instance_id("trend_fit_summary")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+                is_gamm_trend_model,
+            ],
+            unpack_depth=1,
+        )
+        .partial(model=trend_model, **(params.get("trend_fit_summary") or {}))
+        .mapvalues(argnames=["model_params"], argvalues=trend_fit)
+    )
+
+    trend_fit_summary_gamm = (
+        task(get_trend_model_fit_summary)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_gamm")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -918,15 +936,15 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             model_params=trend_fit_combined,
             model=trend_model,
-            **(params.get("trend_fit_summary_combined") or {}),
+            **(params.get("trend_fit_summary_gamm") or {}),
         )
-        .call()
+        .mapvalues(argnames=["dataframe"], argvalues=speed_trends)
     )
 
-    trend_fit_summary_table_gamm = (
-        task(draw_table)
+    trend_fit_summary_merged = (
+        task(groupbykey_passthrough_skip)
         .validate()
-        .set_task_instance_id("trend_fit_summary_table_gamm")
+        .set_task_instance_id("trend_fit_summary_merged")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -937,7 +955,47 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            dataframe=trend_fit_summary_combined,
+            iterables=[trend_fit_summary, trend_fit_summary_gamm],
+            **(params.get("trend_fit_summary_merged") or {}),
+        )
+        .call()
+    )
+
+    trend_fit_summary_final = (
+        task(concat_dataframes)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_final")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            ensure_columns=[],
+            reset_index=True,
+            **(params.get("trend_fit_summary_final") or {}),
+        )
+        .mapvalues(argnames=["dfs"], argvalues=trend_fit_summary_merged)
+    )
+
+    trend_fit_summary_table = (
+        task(draw_table)
+        .validate()
+        .set_task_instance_id("trend_fit_summary_table")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
             columns=None,
             table_config={
                 "enable_sorting": True,
@@ -945,15 +1003,15 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                 "enable_download": True,
                 "hide_header": False,
             },
-            **(params.get("trend_fit_summary_table_gamm") or {}),
+            **(params.get("trend_fit_summary_table") or {}),
         )
-        .call()
+        .mapvalues(argnames=["dataframe"], argvalues=trend_fit_summary_final)
     )
 
-    persist_fit_summary_table_gamm = (
+    persist_fit_summary_table = (
         task(persist_text)
         .validate()
-        .set_task_instance_id("persist_fit_summary_table_gamm")
+        .set_task_instance_id("persist_fit_summary_table")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -965,16 +1023,15 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            text=trend_fit_summary_table_gamm,
-            **(params.get("persist_fit_summary_table_gamm") or {}),
+            **(params.get("persist_fit_summary_table") or {}),
         )
-        .call()
+        .mapvalues(argnames=["text"], argvalues=trend_fit_summary_table)
     )
 
-    fit_summary_widget_gamm = (
+    fit_summary_widget = (
         task(create_plot_widget_single_view)
         .validate()
-        .set_task_instance_id("fit_summary_widget_gamm")
+        .set_task_instance_id("fit_summary_widget")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -985,11 +1042,9 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         )
         .partial(
             title="Trend Model Fit Parameters",
-            view=None,
-            data=persist_fit_summary_table_gamm,
-            **(params.get("fit_summary_widget_gamm") or {}),
+            **(params.get("fit_summary_widget") or {}),
         )
-        .call()
+        .map(argnames=["view", "data"], argvalues=persist_fit_summary_table)
     )
 
     trend_predictions_merged = (
@@ -1232,6 +1287,25 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
+    grouped_fit_summary_widget = (
+        task(merge_widget_views)
+        .validate()
+        .set_task_instance_id("grouped_fit_summary_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=fit_summary_widget,
+            **(params.get("grouped_fit_summary_widget") or {}),
+        )
+        .call()
+    )
+
     speedmap_dashboard = (
         task(gather_dashboard)
         .validate()
@@ -1248,7 +1322,11 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             details=workflow_details,
             time_range=time_range,
-            widgets=[grouped_speed_map, grouped_speed_trend, fit_summary_widget_gamm],
+            widgets=[
+                grouped_speed_map,
+                grouped_speed_trend,
+                grouped_fit_summary_widget,
+            ],
             groupers=resolved_groupers,
             **(params.get("speedmap_dashboard") or {}),
         )
