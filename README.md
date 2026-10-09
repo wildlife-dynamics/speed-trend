@@ -1,8 +1,9 @@
 # speed-trend
 
 Ecoscope workflow repository for the Speed with Trend Analysis workflow.
-Classifies EarthRanger subject movement by speed and fits a trend model
-(Linear, GLM, GAM, or GAMM) to mean speed over time.
+Fits a trend model (Linear, GAM, or GAMM) to mean speed over time for
+EarthRanger subject movement. (A separate workflow produces the
+speed-classified map - this one no longer does.)
 
 ## Project Structure
 
@@ -21,15 +22,15 @@ custom task packages in this repo. If you need a new task, add it to
 
 ## Trend Analysis
 
-The `Trend Analysis` step lets you pick one of four regression models
-(Linear, GLM, GAM, GAMM), fit to mean speed per `Trend Time Bucket`. Every
-group (from `Group Data`'s grouper, e.g. Subject Name) still gets its own
-trend chart in the dashboard - but GAMM is wired differently from the other
-three under the hood, for the same reason as wt-hansen-deforestation's
-Trend Analysis: a random effect needs more than one group's data in the same
-fit to estimate any cross-group variance from.
+The `Trend Analysis` step lets you pick one of three regression models
+(Linear, GAM, GAMM - GAM is the default), fit to mean speed per `Trend Time
+Bucket` (Day by default). Every group (from `Group Data`'s grouper, e.g.
+Subject Name) still gets its own trend chart in the dashboard - but GAMM is
+wired differently from the other two under the hood, for the same reason as
+wt-hansen-deforestation's Trend Analysis: a random effect needs more than
+one group's data in the same fit to estimate any cross-group variance from.
 
-Linear/GLM/GAM each **fit independently per group**: `trend_fit`/
+Linear/GAM each **fit independently per group**: `trend_fit`/
 `trend_predictions` are `mapvalues`'d over `speed_trends`'s per-group output.
 
 GAMM **fits once, combined across every group** (`speed_trends_combined` via
@@ -51,44 +52,47 @@ across whatever coarser groups are being viewed side by side instead.
 
 Speed-trend's per-bucket, per-group series are often much shorter and sparser
 than Hansen's yearly regional series (e.g. a subject tracked for only a
-few weeks) - `spec.yaml`'s `rjsf-overrides` lower `GamSplineSettings`/
-`GammSplineSettings`'s degrees-of-freedom defaults accordingly, and the
-`Trend Time Bucket` field lets a user switch to Day or Week bucketing for
-short tracking periods. Note that these lowered *defaults* only affect the
-UI form - `param.yaml`/`test-cases.yaml` must set the same fields explicitly
-since a headless run without form defaults otherwise falls back to
-`ecoscope`'s own library-wide pydantic defaults.
+few weeks) - `spec.yaml`'s `rjsf-overrides` lower `GammSplineSettings`'s
+degrees-of-freedom default accordingly (GAM and GAMM share this one settings
+class), and the `Trend Time Bucket` field defaults to Day and lets a user
+switch to Week/Month/Year for longer tracking periods. Note that these
+lowered *defaults* only affect the UI form - `param.yaml`/`test-cases.yaml`
+must set the same fields explicitly since a headless run without form
+defaults otherwise falls back to `ecoscope`'s own library-wide pydantic
+defaults.
 
-### Trend Model Fit Parameters table (GAMM only)
+### Model Parameters table
 
-When GAMM is selected, the dashboard also shows a **Trend Model Fit
-Parameters** table - the raw pymc/bambi posterior summary from the
-combined fit, one row per parameter, for inspecting the fit itself
-rather than just its predicted curve. Since GAMM fits once combined
-across every group, this is a single table shown once, unfiltered
-(the same shared fit applies regardless of which group is selected) -
-not shown at all for Linear/GLM/GAM, which don't have a comparable
-posterior to summarize this way.
+The dashboard also shows a **Model Parameters** table, for every model
+(not just GAMM) - the fit's own parameter summary, one row per parameter,
+for inspecting the fit itself rather than just its predicted curve.
 
-**Columns**: `mean`, `sd`, `eti89_lb`/`eti89_ub` (89% credible
-interval), `ess_bulk`/`ess_tail` (effective sample size - low values
-mean the MCMC chains didn't mix well), `r_hat` (should be close to
-1.0 - values above ~1.01 mean the chains disagree and the fit needs
-more draws/tuning to trust).
+For Linear and GAM, each group was fit independently, so the table's content
+actually changes per group/subject filter. For GAMM, which fits once
+combined across every group (see above), the same shared posterior summary
+is just replayed under each group's filter - filtering the table to one
+group does not mean GAMM was fit on that group alone.
+
+**Columns** (GAM/GAMM - posterior summary): `mean`, `sd`, `eti89_lb`/
+`eti89_ub` (89% credible interval), `ess_bulk`/`ess_tail` (effective sample
+size - low values mean the MCMC chains didn't mix well), `r_hat` (should be
+close to 1.0 - values above ~1.01 mean the chains disagree and the fit needs
+more draws/tuning to trust). Linear's table instead shows `coefficient`,
+`std_error`, and `p_value` per term (the `y = mx + c` fit).
 
 The table itself has sorting and CSV download built in
 (`table_config.enable_download`), so there's no separate raw-CSV file
 for this alongside it.
 
-**Rows** - what each parameter name means:
+**Rows** - what each parameter name means (GAM/GAMM):
 
 | Row | Meaning |
 |---|---|
 | `sigma` | Residual noise: how much observed speed varies around the fitted curve after accounting for everything else. |
 | `Intercept` | The population-level baseline: average mean speed across *all* groups combined, on the model's internal (centered/scaled) scale. |
 | `bs(year, df=N)[0]`, `[1]`, ... | Spline basis coefficients that together draw the smooth trend curve's *shape* over time - not speed values on their own, weights on B-spline basis functions that only make sense combined. |
-| `1\|site_id_sigma` | The between-group variance: how much groups typically differ from each other. Small = groups behave similarly; large = groups vary a lot. |
-| `1\|site_id[<name>]` | One row per group: that specific group's own offset from the population baseline (`Intercept`) - the actual random effect, i.e. how much faster/slower *this* group is than the shared average. |
+| `1\|site_id_sigma` | GAMM only - the between-group variance: how much groups typically differ from each other. Small = groups behave similarly; large = groups vary a lot. |
+| `1\|site_id[<name>]` | GAMM only - one row per group: that specific group's own offset from the population baseline (`Intercept`) - the actual random effect, i.e. how much faster/slower *this* group is than the shared average. |
 
 ## Workflow Development
 
