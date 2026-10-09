@@ -171,3 +171,7 @@ cython_debug/
 Makefile
 Makefile.*
 ee_private_key.pem
+
+# Local mock-io test run artifacts (syrupy snapshots/diffs).
+__results_snapshots__/
+__diff_output__/

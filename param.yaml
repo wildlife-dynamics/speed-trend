@@ -1,8 +1,7 @@
 workflow_details:
   name: Speedmap with Trend Analysis
   description: >-
-    Speed-classified elephant movement map and multi-model trend analysis of
-    mean walking speed over time.
+    Multi-model trend analysis of mean walking speed over time.
 
 er_client_name:
   data_source:
@@ -19,25 +18,14 @@ time_range:
   since: "2008-01-01T00:00:00Z"
   until: "2009-12-31T23:59:59Z"
 
-base_map_defs:
-  base_maps:
-    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-      opacity: 1.0
-    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-      opacity: 0.5
-      max_zoom: 17
-
 trend_bucket:
-  var: "%Y-%m"
+  var: "%Y-%m-%d"
 
 trend_model:
   model:
-    model: "gamm"
+    model: "gam"
     spline_settings:
       degree_of_freedom: 3
 
-map_widget_title:
-  var: Subject Speed Map
-
 chart_widget_title:
-  var: Mean Speed Trend Chart
+  var: Speed Trend Plot
