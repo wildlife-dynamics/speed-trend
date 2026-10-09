@@ -7,10 +7,6 @@ requirements:
     version: ">=2.25.3,<3.0.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
-  - name: pydeck
-    version: "0.9.2"
-    channel: conda-forge
-
   # Without these, conda can resolve an old arviz/arviz-plots pair
   # (0.23.4/0.8.0 as observed) that's incompatible with the matplotlib
   # version also resolved here (arviz_plots.__init__ calls the private
@@ -82,7 +78,7 @@ rjsf-overrides:
       bucket (Day or Week) for subjects tracked over only a short period -
       Month can be too coarse to produce enough data points for the trend
       fit in that case.
-    Trend Analysis.properties.trend_bucket.properties.var.default: "%Y-%m"
+    Trend Analysis.properties.trend_bucket.properties.var.default: "%Y-%m-%d"
     Trend Analysis.properties.trend_bucket.properties.var.oneOf:
       - const: "%Y-%m-%d"
         title: Day
@@ -93,29 +89,24 @@ rjsf-overrides:
       - const: "%Y"
         title: Year
 
-    Dashboard.properties.map_widget_title.properties.var.title: Map Title
-    Dashboard.properties.map_widget_title.properties.var.default: Subject Speed Map
-    Dashboard.properties.map_widget_title.properties.var.description: >-
-      Title displayed on the speed map.
-
     Dashboard.properties.chart_widget_title.properties.var.title: Trend Chart Title
-    Dashboard.properties.chart_widget_title.properties.var.default: Mean Speed Trend Chart
+    Dashboard.properties.chart_widget_title.properties.var.default: Speed Trend Plot
     Dashboard.properties.chart_widget_title.properties.var.description: >-
       Title displayed on the mean speed trend chart.
 
-    # GAMM by default - its combined-fit random effect gives every group a
-    # more robust estimate than fitting each in isolation, especially given
-    # how short/sparse per-group series often are here (see the module
-    # docstring in ecoscope.platform.tasks.analysis._trend_analysis).
+    # GAM by default - independent per-group fits are a simpler, more
+    # predictable starting point than GAMM's combined-fit random effect.
+    # Switch to GAMM when you want every group pooled into one fit (see
+    # the module docstring in ecoscope.platform.tasks.analysis._trend_analysis).
     Trend Analysis.properties.trend_model.properties.model.default:
-      model: "gamm"
+      model: "gam"
       family_settings:
         family: "gaussian"
       spline_settings:
         degree_of_freedom: 3
       mcmc_settings:
         inference_method: "mcmc"
-        draws: 500
+        draws: 1000
         tune: null
         chains: 2
         random_seed: null
@@ -302,99 +293,11 @@ workflow:
       duplicate_strategy: suffix
 
   - name: ""
-    id: classify_traj_speed
-    task: apply_classification
-    partial:
-      df: ${{ workflow.rename_traj_columns.return }}
-      input_column_name: speed_kmhr
-      output_column_name: speed_bins
-      classification_options:
-        scheme: equal_interval
-        k: 6
-      label_options:
-        label_ranges: true
-        label_decimals: 1
-        label_suffix: " km/h"
-
-  - name: ""
     id: split_subject_traj_groups
     task: split_groups
     partial:
-      df: ${{ workflow.classify_traj_speed.return }}
+      df: ${{ workflow.rename_traj_columns.return }}
       groupers: ${{ workflow.resolved_groupers.return }}
-
-  - name: Base Maps
-    id: base_map_defs
-    task: set_base_maps
-
-  - name: ""
-    id: sort_traj_speed
-    task: sort_values
-    partial:
-      column_name: speed_bins
-      ascending: true
-      na_position: last
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.split_subject_traj_groups.return }}
-
-  - name: ""
-    id: colormap_traj_speed
-    task: apply_color_map
-    partial:
-      input_column_name: speed_bins
-      output_column_name: speed_bins_colormap
-      colormap:
-        - "#1a9850"
-        - "#91cf60"
-        - "#d9ef8b"
-        - "#fee08b"
-        - "#fc8d59"
-        - "#d73027"
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.sort_traj_speed.return }}
-
-  - name: ""
-    id: traj_map_layers
-    task: create_path_layer
-    partial:
-      data_url: null
-      layer_style:
-        get_color: speed_bins_colormap
-      legend:
-        title: Speed
-        label_column: speed_bins
-        color_column: speed_bins_colormap
-      tooltip_columns: null
-    mapvalues:
-      argnames: geodataframe
-      argvalues: ${{ workflow.colormap_traj_speed.return }}
-
-  - name: ""
-    id: traj_ecomap
-    task: draw_map
-    partial:
-      tile_layers: ${{ workflow.base_map_defs.return }}
-      legend_style:
-        placement: bottom-right
-      static: false
-      output_type: "html"
-      title: null
-      max_zoom: 20
-      view_state: null
-    mapvalues:
-      argnames: geo_layers
-      argvalues: ${{ workflow.traj_map_layers.return }}
-
-  - name: ""
-    id: ecomap_html_urls
-    task: persist_text
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-    mapvalues:
-      argnames: text
-      argvalues: ${{ workflow.traj_ecomap.return }}
 
   - title: Trend Analysis
     type: task-group
@@ -648,7 +551,7 @@ workflow:
           conditions:
             - never
         partial:
-          title: "Trend Model Fit Parameters"
+          title: "Model Parameters"
         map:
           argnames: [view, data]
           argvalues: ${{ workflow.persist_fit_summary_table.return }}
@@ -740,33 +643,8 @@ workflow:
     description: Configure the dashboard output titles.
     tasks:
       - name: ""
-        id: map_widget_title
-        task: set_string_var
-
-      - name: ""
         id: chart_widget_title
         task: set_string_var
-
-  - name: ""
-    id: speed_map_widget
-    task: create_map_widget_single_view
-    skipif:
-      conditions:
-        - never
-    partial:
-      title: ${{ workflow.map_widget_title.return }}
-    map:
-      argnames: [view, data]
-      argvalues: ${{ workflow.ecomap_html_urls.return }}
-
-  - name: ""
-    id: grouped_speed_map
-    task: merge_widget_views
-    skipif:
-      conditions:
-        - never
-    partial:
-      widgets: ${{ workflow.speed_map_widget.return }}
 
   - name: ""
     id: speed_trend_widget
@@ -805,7 +683,6 @@ workflow:
       details: ${{ workflow.workflow_details.return }}
       time_range: ${{ workflow.time_range.return }}
       widgets:
-        - ${{ workflow.grouped_speed_map.return }}
         - ${{ workflow.grouped_speed_trend.return }}
         - ${{ workflow.grouped_fit_summary_widget.return }}
       groupers: ${{ workflow.resolved_groupers.return }}

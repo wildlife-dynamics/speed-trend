@@ -70,20 +70,14 @@ from ecoscope.platform.tasks.preprocessing import (
     relocations_to_trajectory as relocations_to_trajectory,
 )
 from ecoscope.platform.tasks.results import (
-    create_map_widget_single_view as create_map_widget_single_view,
-)
-from ecoscope.platform.tasks.results import create_path_layer as create_path_layer
-from ecoscope.platform.tasks.results import (
     create_plot_widget_single_view as create_plot_widget_single_view,
 )
 from ecoscope.platform.tasks.results import (
     draw_historic_timeseries as draw_historic_timeseries,
 )
-from ecoscope.platform.tasks.results import draw_map as draw_map
 from ecoscope.platform.tasks.results import draw_table as draw_table
 from ecoscope.platform.tasks.results import gather_dashboard as gather_dashboard
 from ecoscope.platform.tasks.results import merge_widget_views as merge_widget_views
-from ecoscope.platform.tasks.results import set_base_maps as set_base_maps
 from ecoscope.platform.tasks.skip import never as never
 from ecoscope.platform.tasks.transformation import (
     add_spatial_index as add_spatial_index,
@@ -91,10 +85,6 @@ from ecoscope.platform.tasks.transformation import (
 from ecoscope.platform.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
-from ecoscope.platform.tasks.transformation import (
-    apply_classification as apply_classification,
-)
-from ecoscope.platform.tasks.transformation import apply_color_map as apply_color_map
 from ecoscope.platform.tasks.transformation import (
     concat_dataframes as concat_dataframes,
 )
@@ -105,7 +95,6 @@ from ecoscope.platform.tasks.transformation import (
 from ecoscope.platform.tasks.transformation import (
     resolve_spatial_feature_groups_for_spatial_groupers as resolve_spatial_feature_groups_for_spatial_groupers,
 )
-from ecoscope.platform.tasks.transformation import sort_values as sort_values
 from ecoscope.platform.tasks.transformation import (
     trend_groupby_columns as trend_groupby_columns,
 )
@@ -431,34 +420,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .call()
     )
 
-    classify_traj_speed = (
-        task(apply_classification)
-        .validate()
-        .set_task_instance_id("classify_traj_speed")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            df=rename_traj_columns,
-            input_column_name="speed_kmhr",
-            output_column_name="speed_bins",
-            classification_options={"scheme": "equal_interval", "k": 6},
-            label_options={
-                "label_ranges": True,
-                "label_decimals": 1,
-                "label_suffix": " km/h",
-            },
-            **(params.get("classify_traj_speed") or {}),
-        )
-        .call()
-    )
-
     split_subject_traj_groups = (
         task(split_groups)
         .validate()
@@ -473,145 +434,11 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(
-            df=classify_traj_speed,
+            df=rename_traj_columns,
             groupers=resolved_groupers,
             **(params.get("split_subject_traj_groups") or {}),
         )
         .call()
-    )
-
-    base_map_defs = (
-        task(set_base_maps)
-        .validate()
-        .set_task_instance_id("base_map_defs")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(**(params.get("base_map_defs") or {}))
-        .call()
-    )
-
-    sort_traj_speed = (
-        task(sort_values)
-        .validate()
-        .set_task_instance_id("sort_traj_speed")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            column_name="speed_bins",
-            ascending=True,
-            na_position="last",
-            **(params.get("sort_traj_speed") or {}),
-        )
-        .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
-    )
-
-    colormap_traj_speed = (
-        task(apply_color_map)
-        .validate()
-        .set_task_instance_id("colormap_traj_speed")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            input_column_name="speed_bins",
-            output_column_name="speed_bins_colormap",
-            colormap=["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"],
-            **(params.get("colormap_traj_speed") or {}),
-        )
-        .mapvalues(argnames=["df"], argvalues=sort_traj_speed)
-    )
-
-    traj_map_layers = (
-        task(create_path_layer)
-        .validate()
-        .set_task_instance_id("traj_map_layers")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            data_url=None,
-            layer_style={"get_color": "speed_bins_colormap"},
-            legend={
-                "title": "Speed",
-                "label_column": "speed_bins",
-                "color_column": "speed_bins_colormap",
-            },
-            tooltip_columns=None,
-            **(params.get("traj_map_layers") or {}),
-        )
-        .mapvalues(argnames=["geodataframe"], argvalues=colormap_traj_speed)
-    )
-
-    traj_ecomap = (
-        task(draw_map)
-        .validate()
-        .set_task_instance_id("traj_ecomap")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            tile_layers=base_map_defs,
-            legend_style={"placement": "bottom-right"},
-            static=False,
-            output_type="html",
-            title=None,
-            max_zoom=20,
-            view_state=None,
-            **(params.get("traj_ecomap") or {}),
-        )
-        .mapvalues(argnames=["geo_layers"], argvalues=traj_map_layers)
-    )
-
-    ecomap_html_urls = (
-        task(persist_text)
-        .validate()
-        .set_task_instance_id("ecomap_html_urls")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            **(params.get("ecomap_html_urls") or {}),
-        )
-        .mapvalues(argnames=["text"], argvalues=traj_ecomap)
     )
 
     trend_bucket = (
@@ -1042,10 +869,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(
-            title="Trend Model Fit Parameters",
-            **(params.get("fit_summary_widget") or {}),
-        )
+        .partial(title="Model Parameters", **(params.get("fit_summary_widget") or {}))
         .map(argnames=["view", "data"], argvalues=persist_fit_summary_table)
     )
 
@@ -1189,23 +1013,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .mapvalues(argnames=["text"], argvalues=speed_trend_chart)
     )
 
-    map_widget_title = (
-        task(set_string_var)
-        .validate()
-        .set_task_instance_id("map_widget_title")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(**(params.get("map_widget_title") or {}))
-        .call()
-    )
-
     chart_widget_title = (
         task(set_string_var)
         .validate()
@@ -1220,38 +1027,6 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             unpack_depth=1,
         )
         .partial(**(params.get("chart_widget_title") or {}))
-        .call()
-    )
-
-    speed_map_widget = (
-        task(create_map_widget_single_view)
-        .validate()
-        .set_task_instance_id("speed_map_widget")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                never,
-            ],
-            unpack_depth=1,
-        )
-        .partial(title=map_widget_title, **(params.get("speed_map_widget") or {}))
-        .map(argnames=["view", "data"], argvalues=ecomap_html_urls)
-    )
-
-    grouped_speed_map = (
-        task(merge_widget_views)
-        .validate()
-        .set_task_instance_id("grouped_speed_map")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                never,
-            ],
-            unpack_depth=1,
-        )
-        .partial(widgets=speed_map_widget, **(params.get("grouped_speed_map") or {}))
         .call()
     )
 
@@ -1324,11 +1099,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             details=workflow_details,
             time_range=time_range,
-            widgets=[
-                grouped_speed_map,
-                grouped_speed_trend,
-                grouped_fit_summary_widget,
-            ],
+            widgets=[grouped_speed_trend, grouped_fit_summary_widget],
             groupers=resolved_groupers,
             **(params.get("speedmap_dashboard") or {}),
         )

@@ -5,15 +5,12 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 274c7f19d78318e060bdfb3afca48538db8ad435dee4f232fa699d38deb8271f
-artifacts_sha256_strict: 602ac065295bfed34ad1365d01fa808e82b0832cd28b0580c977d997ba7f0932
+artifacts_sha256_basic: 5c5279ecf4489c1afb96cd88657842dc7e2b4b301804dd7e22d48dd31990fc69
+artifacts_sha256_strict: 0f3d651ed8502ebbb49b03aa83af76bf4d77a1f98352e538e927802e69e4049d
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-platform
   version: {version: ==2.25.3}
-- channel: conda-forge
-  name: pydeck
-  version: {version: ==0.9.2}
 - channel: conda-forge
   name: arviz
   version: {version: ==1.3.0}
@@ -26,8 +23,8 @@ installed_requirements:
 - channel: conda-forge
   name: pymc
   version: {version: ==6.3.1}
-params_sha256: 1ddd662cb1147978c587a558fa288cdbb6f723f67033a256a002c4ace2d3ebbe
-spec_sha256: 1b74b6c7a31569a0f8ce5171412d848e1a00218bd6103a4ecf2c6ec54bde86d9
+params_sha256: 07182b2688381cee4820aba0727058b8270a2a6f653bc283c1d031fb391a808a
+spec_sha256: 6db3a015836a663febf849b1bc88007bedcc3cf73e8264d299ddcd9a77654a31
 
 ```
 

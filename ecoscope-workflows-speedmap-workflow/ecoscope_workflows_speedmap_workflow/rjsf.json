@@ -175,199 +175,6 @@
       "type": "object",
       "title": "Convert Relocations to Trajectory"
     },
-    "base_map_defs": {
-      "additionalProperties": false,
-      "properties": {
-        "base_maps": {
-          "default": [
-            {
-              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 1,
-              "max_zoom": 20,
-              "min_zoom": 0
-            },
-            {
-              "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 0.5,
-              "max_zoom": 20,
-              "min_zoom": 0
-            }
-          ],
-          "items": {
-            "title": "Base Layer",
-            "anyOf": [
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                    "enum": [
-                      "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Open Street Map",
-                "type": "object"
-              },
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Roadmap",
-                "type": "object"
-              },
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Satellite",
-                "type": "object"
-              },
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "Terrain",
-                "type": "object"
-              },
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-                    "title": "Preset Layer URL",
-                    "type": "string",
-                    "const": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-                    "enum": [
-                      "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-                    ]
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Layer Opacity",
-                    "type": "number"
-                  }
-                },
-                "title": "USGS Hillshade",
-                "type": "object"
-              },
-              {
-                "description": "A tiled raster layer loaded on-demand from a URL template (e.g., base maps).",
-                "properties": {
-                  "url": {
-                    "default": "https://example.tiles.com/{z}/{x}/{y}.png",
-                    "description": "The URL of a publicly accessible tiled raster service.",
-                    "pattern": "https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}([-a-zA-Z0-9()@:%_\\+.~#?&//=\\{\\}]*)",
-                    "title": "Custom Layer URL",
-                    "type": "string"
-                  },
-                  "opacity": {
-                    "default": 1,
-                    "description": "Set layer transparency from 1 (fully visible) to 0 (hidden).",
-                    "ecoscope:advanced": true,
-                    "maximum": 1.0,
-                    "minimum": 0.0,
-                    "title": "Custom Layer Opacity",
-                    "type": "number"
-                  },
-                  "max_zoom": {
-                    "default": 20,
-                    "description": "Set the maximum zoom level to fetch tiles for.",
-                    "title": "Custom Layer Max Zoom",
-                    "type": "integer"
-                  },
-                  "min_zoom": {
-                    "default": 0,
-                    "description": "Set the minimum zoom level to fetch tiles for.",
-                    "title": "Custom Layer Min Zoom",
-                    "type": "integer"
-                  }
-                },
-                "title": "Custom Layer (Advanced)",
-                "type": "object"
-              }
-            ]
-          },
-          "title": " ",
-          "type": "array",
-          "description": "Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-          "ecoscope:advanced": true
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": "Base Maps"
-    },
     "Trend Analysis": {
       "type": "object",
       "description": "Choose a trend model and configure its fitting parameters for mean speed over time.",
@@ -380,7 +187,7 @@
               "title": "Trend Time Bucket",
               "type": "string",
               "description": "Time period to bucket for the mean-speed trend chart. Use a shorter bucket (Day or Week) for subjects tracked over only a short period - Month can be too coarse to produce enough data points for the trend fit in that case.",
-              "default": "%Y-%m",
+              "default": "%Y-%m-%d",
               "oneOf": [
                 {
                   "const": "%Y-%m-%d",
@@ -423,7 +230,7 @@
                 }
               ],
               "default": {
-                "model": "gamm",
+                "model": "gam",
                 "family_settings": {
                   "family": "gaussian"
                 },
@@ -432,7 +239,7 @@
                 },
                 "mcmc_settings": {
                   "inference_method": "mcmc",
-                  "draws": 500,
+                  "draws": 1000,
                   "tune": null,
                   "chains": 2,
                   "random_seed": null
@@ -452,29 +259,13 @@
       "description": "Configure the dashboard output titles.",
       "ecoscope:task_group": true,
       "properties": {
-        "map_widget_title": {
-          "additionalProperties": false,
-          "properties": {
-            "var": {
-              "title": "Map Title",
-              "type": "string",
-              "default": "Subject Speed Map",
-              "description": "Title displayed on the speed map."
-            }
-          },
-          "required": [
-            "var"
-          ],
-          "type": "object",
-          "title": ""
-        },
         "chart_widget_title": {
           "additionalProperties": false,
           "properties": {
             "var": {
               "title": "Trend Chart Title",
               "type": "string",
-              "default": "Mean Speed Trend Chart",
+              "default": "Speed Trend Plot",
               "description": "Title displayed on the mean speed trend chart."
             }
           },
@@ -1012,12 +803,6 @@
         }
       }
     },
-    "Dashboard": {
-      "ui:order": [
-        "map_widget_title",
-        "chart_widget_title"
-      ]
-    },
     "ui:order": [
       "workflow_details",
       "time_range",
@@ -1025,7 +810,6 @@
       "Subject Group",
       "Group Data",
       "subject_traj",
-      "base_map_defs",
       "Trend Analysis",
       "Dashboard"
     ]
