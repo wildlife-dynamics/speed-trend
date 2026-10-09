@@ -1,0 +1,75 @@
+{
+  "error": null,
+  "result": {
+    "filters": {
+      "schema": {
+        "properties": {
+          "subject_name": {
+            "default": "eco_1",
+            "oneOf": [
+              {
+                "const": "eco_1",
+                "title": "eco_1"
+              },
+              {
+                "const": "eco_2",
+                "title": "eco_2"
+              }
+            ],
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "uiSchema": {
+          "subject_name": {
+            "ui:title": "Subject Name",
+            "ui:widget": "select"
+          }
+        }
+      }
+    },
+    "layout": [],
+    "metadata": {
+      "description": "Mean speed trend grouped by subject.",
+      "time_range": "From 01 Jan 2008 00:00:00 UTC to 31 Dec 2009 23:59:59 UTC",
+      "time_zone": "UTC",
+      "title": "Speedmap with Trend Analysis"
+    },
+    "views": {
+      "{\"subject_name\": \"eco_1\"}": [
+        {
+          "data": "tmpfile",
+          "id": 0,
+          "is_filtered": true,
+          "title": "Speed Trend Plot",
+          "widget_type": "graph"
+        },
+        {
+          "data": "tmpfile",
+          "id": 1,
+          "is_filtered": true,
+          "title": "Model Parameters",
+          "widget_type": "graph"
+        }
+      ],
+      "{\"subject_name\": \"eco_2\"}": [
+        {
+          "data": "tmpfile",
+          "id": 0,
+          "is_filtered": true,
+          "title": "Speed Trend Plot",
+          "widget_type": "graph"
+        },
+        {
+          "data": "tmpfile",
+          "id": 1,
+          "is_filtered": true,
+          "title": "Model Parameters",
+          "widget_type": "graph"
+        }
+      ]
+    }
+  },
+  "trace": null
+}

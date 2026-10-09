@@ -172,8 +172,6 @@ Makefile
 Makefile.*
 ee_private_key.pem
 
-# Local mock-io test run artifacts (syrupy snapshots/diffs) - never
-# committed; PNG screenshot snapshots aren't pixel-stable across runs
-# or machines, so these are regenerate-locally-only, not CI baselines.
-__results_snapshots__/
+# Local mock-io test diff artifacts (syrupy) - throwaway pixel-diff
+# images generated only when a screenshot snapshot assertion fails.
 __diff_output__/

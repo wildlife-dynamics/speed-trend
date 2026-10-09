@@ -1,0 +1,55 @@
+{
+  "error": null,
+  "result": {
+    "filters": {
+      "schema": {
+        "properties": {
+          "All": {
+            "default": "True",
+            "oneOf": [
+              {
+                "const": "True",
+                "title": "True"
+              }
+            ],
+            "title": "All",
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "uiSchema": {
+          "All": {
+            "ui:title": "All",
+            "ui:widget": "select"
+          }
+        }
+      }
+    },
+    "layout": [],
+    "metadata": {
+      "description": "Mean speed trend for elephant tracks.",
+      "time_range": "From 01 Jan 2008 00:00:00 UTC to 31 Dec 2009 23:59:59 UTC",
+      "time_zone": "UTC (UTC+00:00)",
+      "title": "Speedmap with Trend Analysis"
+    },
+    "views": {
+      "{\"All\": \"True\"}": [
+        {
+          "data": "tmpfile",
+          "id": 0,
+          "is_filtered": true,
+          "title": "Speed Trend Plot",
+          "widget_type": "graph"
+        },
+        {
+          "data": "tmpfile",
+          "id": 1,
+          "is_filtered": true,
+          "title": "Model Parameters",
+          "widget_type": "graph"
+        }
+      ]
+    }
+  },
+  "trace": null
+}
